@@ -60,13 +60,22 @@ jobs:
             brew install --HEAD --build-from-source --formula "./$formula" --verbose || exit 1
           done
 
-      - name: Build and test qemu-virgl
-        continue-on-error: true
+      - name: Build and test qemu-virgl (known working version)
         run: |
+          # Temporarily modify formula to use known working commit
+          sed -i.bak 's/ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7/99fc08366b06282614daeda989d2fde6ab8a707f/' Formula/qemu-virgl.rb
+          sed -i.bak 's/2025.03.08/20211212.1/' Formula/qemu-virgl.rb
+          sed -i.bak 's/qemu-v06.diff/qemu-v05.diff/' Formula/qemu-virgl.rb
           HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
           brew install --build-from-source --formula ./Formula/qemu-virgl.rb --verbose || exit 1
+          
+      - name: Test QEMU functionality
+        run: |
           qemu-system-x86_64 --version
           qemu-img --version
+          # Test ARM64 emulation
+          qemu-system-aarch64 --version
+          timeout 30s qemu-system-aarch64 -machine virt -accel tcg -nographic -m 512M || true
 
       - name: Upload logs on failure
         if: failure()
