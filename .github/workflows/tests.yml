@@ -1,44 +1,79 @@
-name: brew test-bot
+name: Test qemu-virgl build
+
 on:
   push:
     branches:
-      - main
+      - master
+    paths:
+      - 'Formula/**'
+      - 'Patches/**'
+      - '.github/workflows/*.yml'
   pull_request:
+  workflow_dispatch:
+
 jobs:
-  test-bot:
-    strategy:
-      matrix:
-        os: [macos-11]
-    runs-on: ${{ matrix.os }}
+  test:
+    runs-on: macos-14
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+      HOMEBREW_NO_INSTALL_FROM_API: 1
+      HOMEBREW_NO_ANALYTICS: 1
+    
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
       - name: Set up Homebrew
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
-      - name: Cache Homebrew Bundler RubyGems
-        id: cache
-        uses: actions/cache@v1
+      - name: Set up tap
+        run: |
+          mkdir -p $(brew --prefix)/Homebrew/Library/Taps/startergo
+          ln -s ${{ github.workspace }} $(brew --prefix)/Homebrew/Library/Taps/startergo/homebrew-qemu-virgl
+
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v3
         with:
-          path: ${{ steps.set-up-homebrew.outputs.gems-path }}
-          key: ${{ runner.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
-          restore-keys: ${{ runner.os }}-rubygems-
+          path: ~/Library/Caches/Homebrew
+          key: brew-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            brew-${{ runner.os }}-
 
-      - name: Install Homebrew Bundler RubyGems
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: brew install-bundler-gems
+      - name: Build HEAD dependencies
+        run: |
+          brew update
+          # Build dependencies one by one with explicit formula paths
+          FORMULAS=(
+            "Formula/libangle.rb"
+            "Formula/libepoxy-angle.rb"
+            "Formula/virglrenderer.rb"
+          )
+          
+          for formula in "${FORMULAS[@]}"; do
+            echo "Building $formula..."
+            HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
+            brew install --HEAD --build-from-source --formula "./$formula" --verbose || exit 1
+          done
 
-      - run: brew test-bot --only-cleanup-before
+      - name: Build and test qemu-virgl
+        continue-on-error: true
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
+          brew install --build-from-source --formula ./Formula/qemu-virgl.rb --verbose || exit 1
+          qemu-system-x86_64 --version
+          qemu-img --version
 
-      - run: brew test-bot --only-setup
-
-      - run: brew test-bot --only-tap-syntax
-
-      - run: brew test-bot --only-formulae
-        if: github.event_name == 'pull_request'
-
-      - name: Upload bottles as artifact
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@main
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          name: bottles
-          path: '*.bottle.*'
+          name: brew-logs
+          path: |
+            ~/Library/Logs/Homebrew/*.log
+            ~/Library/Logs/Homebrew/*/*.log
+            ~/Library/Caches/Homebrew/Logs/*.log

@@ -1,60 +1,103 @@
+require "download_strategy"
+
+class NoSubmoduleGitDownloadStrategy < GitDownloadStrategy
+  def stage
+    # Set environment configuration to force detached head advice
+    system "git", "config", "advice.detachedHead", "true"
+    # Ensure submodules are not initialized or updated
+    system "git", "config", "--local", "submodule.recurse", "false"
+    # Fetch the main branch explicitly
+    system "git", "config", "--replace-all", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main"
+    system "git", "fetch", "origin", "main"
+    system "git", "checkout", "main"
+    super
+  end
+
+  def git_env
+    {
+      "GIT_TERMINAL_PROMPT" => "0",
+      "GIT_SSH_COMMAND" => "/usr/bin/ssh -oBatchMode=yes",
+      "GIT_ASKPASS" => "/bin/echo"
+    }
+  end
+
+  def submodule(*)
+    # Override submodule method to do nothing
+  end
+
+  def submodules
+    # Override submodules method to return an empty array
+    []
+  end
+
+  def update_submodules(ctx = nil)
+    # Override update_submodules to skip submodule sync
+  end
+end
+
 class Libangle < Formula
   desc "Conformant OpenGL ES implementation for Windows, Mac, Linux, iOS and Android"
-  homepage "https://github.com/google/angle"
-  url "https://github.com/google/angle.git", using: :git, revision: "df0f7133799ca6aa0d31802b22d919c6197051cf"
-  version "20211212.1"
+  homepage "https://chromium.googlesource.com/angle/angle"
+  head "https://chromium.googlesource.com/angle/angle.git", using: NoSubmoduleGitDownloadStrategy, branch: "main"
   license "BSD-3-Clause"
-
-  bottle do
-    root_url "https://github.com/knazarov/homebrew-qemu-virgl/releases/download/libangle-20211212.1"
-    sha256 cellar: :any, arm64_big_sur: "6e776fc996fa02df211ee7e79512d4996558447bde65a63d2c7578ed1f63f660"
-    sha256 cellar: :any, big_sur: "1c201f77bb6d877f2404ec761e47e13b97a3d61dff7ddfc484caa3deae4e5c1b"
-  end
 
   depends_on "meson" => :build
   depends_on "ninja" => :build
-
-  resource "depot_tools" do
-    url "https://chromium.googlesource.com/chromium/tools/depot_tools.git", revision: "dc86a4b9044f9243886ca0da0c1753820ac51f45"
-  end
+  depends_on "python@3.13" => :build
 
   def install
-    mkdir "build" do
-      resource("depot_tools").stage do
-        path = PATH.new(ENV["PATH"], Dir.pwd)
-        with_env(PATH: path) do
-          Dir.chdir(buildpath)
+    depot_tools_path = HOMEBREW_CACHE/"libangle--depot_tools--git"
+    unless File.directory?(depot_tools_path)
+      # Manually initialize and fetch depot_tools
+      system "git", "init", depot_tools_path
+      system "git", "-C", depot_tools_path, "fetch", "https://chromium.googlesource.com/chromium/tools/depot_tools", "--depth", "1"
+      system "git", "-C", depot_tools_path, "checkout", "FETCH_HEAD"
+    end
+    ENV.prepend_path "PATH", depot_tools_path
+    ENV["DEPOT_TOOLS_UPDATE"] = "0"
 
-          system "python2", "scripts/bootstrap.py"
-          system "gclient", "sync"
-          if Hardware::CPU.arm?
-            system "gn", "gen", \
-              "--args=use_custom_libcxx=false target_cpu=\"arm64\" treat_warnings_as_errors=false", \
-              "./angle_build"
-          else
-            system "gn", "gen", "--args=use_custom_libcxx=false treat_warnings_as_errors=false", "./angle_build"
-          end
-          system "ninja", "-C", "angle_build"
-          lib.install "angle_build/libabsl.dylib"
-          lib.install "angle_build/libEGL.dylib"
-          lib.install "angle_build/libGLESv2.dylib"
-          lib.install "angle_build/libchrome_zlib.dylib"
-          include.install Pathname.glob("include/*")
-        end
+    # Determine the SDKROOT dynamically
+    sdkroot = `xcodebuild -sdk macosx -version Path`.strip
+    ENV["SDKROOT"] = sdkroot
+    macos_deployment_target = "13.3"
+
+    # Manually initialize and fetch angle without submodules
+    system "git", "clone", "--depth", "1", "--branch", "main", "https://chromium.googlesource.com/angle/angle", "source/angle"
+    cd "source/angle" do
+      if File.exist?("scripts/bootstrap.py")
+        system "python3", "scripts/bootstrap.py"
+      else
+        odie "scripts/bootstrap.py not found"
       end
+
+      # Sync the dependencies without hooks
+      system "gclient", "sync", "--nohooks", "--no-history", "--shallow", "--no-nag-max"
+
+      # Update clang to the expected version
+      system "python3", "tools/clang/scripts/update.py"
+
+      # Add necessary flags to the gn args
+      gn_args = %W[
+        use_custom_libcxx=true  # Set use_custom_libcxx to true: This is required for PartitionAlloc to work.
+        treat_warnings_as_errors=false
+        mac_deployment_target="#{macos_deployment_target}"
+        extra_cflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot} -D_LIBCPP_BUILDING_LIBRARY"
+        extra_cxxflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot} -D_LIBCPP_BUILDING_LIBRARY"
+        extra_ldflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot}"
+        pdf_use_partition_alloc=false  # Add pdf_use_partition_alloc=false: This setting is added to the GN configuration to disable PartitionAlloc.
+      ]
+      gn_args << 'target_cpu="arm64"' if Hardware::CPU.arm?
+
+      system "gn", "gen", "angle_build", "--args=#{gn_args.join(' ')}"
+      system "ninja", "-C", "angle_build"
+      
+      lib.install "angle_build/libEGL.dylib"
+      lib.install "angle_build/libGLESv2.dylib"      
+      include.install Pathname.glob("include/*")
     end
   end
 
   test do
-    # `test do` will create, run in and delete a temporary directory.
-    #
-    # This test will fail and we won't accept that! For Homebrew/homebrew-core
-    # this will need to be a test that verifies the functionality of the
-    # software. Run the test with `brew test libangle`. Options passed
-    # to `brew install` such as `--HEAD` also need to be provided to `brew test`.
-    #
-    # The installed folder is not in the path, so use the entire path to any
-    # executables being tested: `system "#{bin}/program", "do", "something"`.
     system "true"
   end
 end

@@ -16,196 +16,73 @@ Features:
 
 ## Installation
 
-`brew install knazarov/qemu-virgl/qemu-virgl`
+### Prerequisites
 
-Or `brew tap knazarov/qemu-virgl` and then `brew install qemu-virgl`.
+1. **Xcode**:
+   ```sh
+   # Install Xcode from the Mac App Store
+   # After installation, open Xcode to accept the license agreement
+   sudo xcodebuild -license accept
+   ```
+   Note: The Command Line Tools alone are not sufficient; full Xcode is required for building QEMU and its dependencies.
 
+2. **Homebrew**:
+   If you haven't installed Homebrew yet:
+   ```sh
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
 
-## Usage
+### Installation Steps
 
-Qemu has many command line options and emulated devices, so the
-sections are specific to your CPU (Intel/M1).
+1. Add the tap and install QEMU with GPU acceleration:
+   ```sh
+   brew tap startergo/qemu-virgl
+   brew install qemu-virgl
+   ```
 
-For the best experience, maximize the qemu window when it starts. To
-release the mouse, press `Ctrl-Alt-g`.
+   Or install it directly:
+   ```sh
+   brew install startergo/qemu-virgl/qemu-virgl
+   ```
 
-### Usage - M1 Macs
+The formula will automatically install all required dependencies including:
+- libangle (Apple's Metal backend for OpenGL)
+- libepoxy-angle (OpenGL dispatch library)
+- virglrenderer (OpenGL virtualization library)
 
-**Latest release needs virtio-gpu-gl-pci command line option instead of virtio-gpu-pci, otherwise gpu acceleration won't work**
+Note: The first installation might take some time (15-30 minutes) as it builds several components. Subsequent updates will be faster as they use pre-built bottles.
 
-First, create a disk image you'll run your Linux installation from (tune image size as needed):
+### Verifying Installation
 
+To verify the installation was successful:
 ```sh
-qemu-img create hdd.raw 64G
+qemu-system-x86_64 --version  # Should show QEMU version
+virgl_test_server_android    # Should be available if virglrenderer installed correctly
 ```
 
-Download an ARM based Fedora 35 image:
+### Troubleshooting
 
-```sh
-curl -LO https://www.mirrorservice.org/sites/dl.fedoraproject.org/pub/fedora/linux/releases/35/Workstation/aarch64/iso/Fedora-Workstation-Live-aarch64-35-1.2.iso
-```
+If you encounter installation issues:
 
-Copy the firmware:
+1. Ensure Xcode is properly installed:
+   ```sh
+   xcode-select -p  # Should point to full Xcode path, not Command Line Tools
+   ```
 
-```sh
-cp $(dirname $(which qemu-img))/../share/qemu/edk2-aarch64-code.fd .
-cp $(dirname $(which qemu-img))/../share/qemu/edk2-arm-vars.fd .
-```
+2. Check Homebrew's health:
+   ```sh
+   brew doctor
+   brew update && brew upgrade
+   ```
 
-Install the system from the CD image:
+3. Try a verbose installation:
+   ```sh
+   HOMEBREW_NO_AUTO_UPDATE=1 brew install -v qemu-virgl
+   ```
 
-```sh
-qemu-system-aarch64 \
-         -machine virt,accel=hvf,highmem=off \
-         -cpu cortex-a72 -smp 2 -m 4G \
-         -device intel-hda -device hda-output \
-         -device qemu-xhci \
-         -device virtio-gpu-gl-pci \
-         -device usb-kbd \
-         -device virtio-net-pci,netdev=net \
-         -device virtio-mouse-pci \
-         -display cocoa,gl=es \
-         -netdev user,id=net,ipv6=off \
-         -drive "if=pflash,format=raw,file=./edk2-aarch64-code.fd,readonly=on" \
-         -drive "if=pflash,format=raw,file=./edk2-arm-vars.fd,discard=on" \
-         -drive "if=virtio,format=raw,file=./hdd.raw,discard=on" \
-         -cdrom Fedora-Workstation-Live-aarch64-35-1.2.iso \
-         -boot d
-```
-
-Run the system without the CD image to boot into the primary partition:
-
-```sh
-qemu-system-aarch64 \
-         -machine virt,accel=hvf,highmem=off \
-         -cpu cortex-a72 -smp 2 -m 4G \
-         -device intel-hda -device hda-output \
-         -device qemu-xhci \
-         -device virtio-gpu-gl-pci \
-         -device usb-kbd \
-         -device virtio-net-pci,netdev=net \
-         -device virtio-mouse-pci \
-         -display cocoa,gl=es \
-         -netdev user,id=net,ipv6=off \
-         -drive "if=pflash,format=raw,file=./edk2-aarch64-code.fd,readonly=on" \
-         -drive "if=pflash,format=raw,file=./edk2-arm-vars.fd,discard=on" \
-         -drive "if=virtio,format=raw,file=./hdd.raw,discard=on"
-```
-
-
-### Usage - Intel Macs
-
-First, create a disk image you'll run your Linux installation from (tune image size as needed):
-
-```sh
-qemu-img create hdd.raw 64G
-```
-
-Download an x86 based Fedora 35 image:
-
-```sh
-curl -LO https://www.mirrorservice.org/sites/dl.fedoraproject.org/pub/fedora/linux/releases/35/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-35-1.2.iso
-```
-
-Install the system from the CD image:
-
-```sh
-qemu-system-x86_64 \
-         -machine accel=hvf \
-         -cpu Haswell-v4 -smp 2 -m 4G \
-         -device intel-hda -device hda-output \
-         -device qemu-xhci \
-         -device virtio-vga-gl \
-         -device usb-kbd \
-         -device virtio-net-pci,netdev=net \
-         -device virtio-mouse-pci \
-         -display cocoa,gl=es \
-         -netdev user,id=net,ipv6=off \
-         -drive "if=virtio,format=raw,file=hdd.raw,discard=on" \
-         -cdrom Fedora-Workstation-Live-x86_64-35-1.2.iso \
-         -boot d
-```
-
-Run the system without the CD image to boot into the primary partition:
-
-```sh
-qemu-system-x86_64 \
-         -machine accel=hvf \
-         -cpu Haswell-v4 -smp 2 -m 4G \
-         -device intel-hda -device hda-output \
-         -device qemu-xhci \
-         -device virtio-vga-gl \
-         -device usb-kbd \
-         -device virtio-net-pci,netdev=net \
-         -device virtio-mouse-pci \
-         -display cocoa,gl=es \
-         -netdev user,id=net,ipv6=off \
-         -drive "if=virtio,format=raw,file=hdd.raw,discard=on"
-```
-
-
-## Usage - Advanced
-
-This section has additional configuration you may want to do to improve your workflow
-
-
-### Clipboard sharing
-
-There's now support for sharing clipboard in both directions: from vm->host and host->vm. To enable clibpoard sharing, add this to your command line:
-
-```
-         -chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on \
-         -device virtio-serial-pci \
-         -device virtserialport,chardev=spice,name=com.redhat.spice.0
-```
-
-### Mouse integration
-
-By default, you have mouse pointer capture and have to release mouse pointer from the VM using keyboard shortcut. In order to have seamless mouse configuration,
-add the following to your command line instead of `-device virtio-mouse-pci`:
-
-```
-	-device usb-tablet \
-```
-
-### MacOS native networking for VMs (vmnet)
-
-akihikodaki's patch set includes support for vmnet which offers more flexibility than `-netdev user`, and allows higher network throughput. (see https://github.com/akihikodaki/qemu/commit/72a35bb6e0a16bb7d346ba822a6d47293915fc95).
-
-For instance, to enable bridge mode, replace:
-
-```
-    -device virtio-net-pci,netdev=net \
-    -netdev user,id=net,ipv6=off \
-```
-
-with
-
-
-```
-    -netdev vmnet-macos,id=n1,mode=bridged,ifname=en0 \
-    -device virtio-net,netdev=n1 \
-```
-
-vmnet also offers "host" and "shared" networking model:
-
-```
-   -netdev vmnet-macos,id=str,mode=host|shared[,dhcp_start_address=addr,dhcp_end_address=addr,dhcp_subnet_mask=mask]
-```
-
-***caveats:***
-
-1) vmnet requires running qemu as root, for now.
-2) current vmnet API (Apple) doesn't support setting MAC address, so it will be randomized every time the VM is started.
-
-To work around 2), for now it's possible to set the MAC address within the VM.
-
-As root, create a file `/etc/udev/rules.d/75-mac-vmnet.rules` with the following content:
-
-```
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="enp0s3", RUN+="/usr/bin/ip link set dev %k address 00:11:22:33:44:55"
-```
-
-replace `enp0s3` with the name of your interface and `00:11:22:33:44:55` with the desired MAC address.
-
-Reboot or issue a `ip link set dev enp0s3 address 00:11:22:33:44:55` to change your MAC address.
+4. If you see build errors, try cleaning and retrying:
+   ```sh
+   brew cleanup
+   brew uninstall qemu-virgl
+   brew install qemu-virgl
+   ```
