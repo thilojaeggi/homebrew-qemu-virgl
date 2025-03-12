@@ -81,9 +81,7 @@ class QemuVirgl < Formula
       --enable-cocoa
       --enable-sdl
       # Explicitly disable GTK and GStreamer to prevent conflicts
-      --disable-gtk
-      --disable-vte
-      --disable-gstreamer
+      --disable-gtk      
       # Extra flags for includes and libraries
       --extra-cflags=-DNCURSES_WIDECHAR=1
       --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/include
