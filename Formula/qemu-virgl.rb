@@ -27,9 +27,7 @@ class QemuVirgl < Formula
   depends_on "pixman"
   depends_on "snappy"
   depends_on "spice-protocol"
-  depends_on "vde"
-  depends_on "sdl2"
-  depends_on "sdl2_image"  
+  depends_on "vde"   
 
   # Add tomli as a resource for Python build dependency
   resource "tomli" do
@@ -77,10 +75,9 @@ class QemuVirgl < Formula
       # Enable required features
       --enable-curses
       --enable-libssh
-      --enable-vde
-      --enable-cocoa
-      --enable-sdl
+      --enable-vde           
       # Explicitly disable GTK and GStreamer to prevent conflicts
+      --disable-sdl
       --disable-gtk      
       # Extra flags for includes and libraries
       --extra-cflags=-DNCURSES_WIDECHAR=1
@@ -99,7 +96,9 @@ class QemuVirgl < Formula
     # silent runtime failures, so we set it to a Homebrew path in order to
     # obtain sensible runtime errors. This will also be compatible with
     # Samba installations from external taps.
-    args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"    
+    args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
+    
+    args << "--enable-cocoa" if OS.mac?
 
     system "./configure", *args
     system "make", "V=1", "install"
