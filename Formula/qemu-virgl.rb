@@ -1,4 +1,4 @@
-# Formula created by startergo on 2025-03-12 13:55:08 UTC
+# Formula created by startergo on 2025-03-12 21:18:25 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -71,13 +71,20 @@ class QemuVirgl < Formula
       --prefix=#{prefix}
       --cc=#{ENV.cc}
       --host-cc=#{ENV.cc}
+      # Basic configuration
       --disable-bsd-user
       --disable-guest-agent
+      # Enable required features
       --enable-curses
       --enable-libssh
       --enable-vde
       --enable-cocoa
-      --enable-sdl      
+      --enable-sdl
+      # Explicitly disable GTK and GStreamer to prevent conflicts
+      --disable-gtk
+      --disable-vte
+      --disable-gstreamer
+      # Extra flags for includes and libraries
       --extra-cflags=-DNCURSES_WIDECHAR=1
       --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/include
       --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/include
@@ -87,11 +94,6 @@ class QemuVirgl < Formula
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/lib
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
       --extra-ldflags=-L#{Formula["spice-protocol"].opt_prefix}/lib
-      # Explicitly disable GTK and GStreamer to prevent conflicts
-      --disable-gtk
-      --disable-gtk-vnc
-      --disable-vte      
-      --disable-gstreamer         
     ]
 
     # Sharing Samba directories in QEMU requires the samba.org smbd which is
@@ -99,9 +101,7 @@ class QemuVirgl < Formula
     # silent runtime failures, so we set it to a Homebrew path in order to
     # obtain sensible runtime errors. This will also be compatible with
     # Samba installations from external taps.
-    args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
-
-    args << "--enable-cocoa" if OS.mac?
+    args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"    
 
     system "./configure", *args
     system "make", "V=1", "install"
