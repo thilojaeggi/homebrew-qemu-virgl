@@ -29,9 +29,7 @@ class QemuVirgl < Formula
   depends_on "spice-protocol"
   depends_on "vde"
   depends_on "sdl2"
-  depends_on "sdl2_image"
-  depends_on "gtk+3"
-  depends_on "gtk-vnc"
+  depends_on "sdl2_image"  
 
   # Add tomli as a resource for Python build dependency
   resource "tomli" do
@@ -79,8 +77,7 @@ class QemuVirgl < Formula
       --enable-libssh
       --enable-vde
       --enable-cocoa
-      --enable-sdl
-      --enable-gtk
+      --enable-sdl      
       --extra-cflags=-DNCURSES_WIDECHAR=1
       --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/include
       --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/include
@@ -89,7 +86,12 @@ class QemuVirgl < Formula
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/lib
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/lib
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["spice-protocol"].opt_prefix}/lib      
+      --extra-ldflags=-L#{Formula["spice-protocol"].opt_prefix}/lib
+      # Explicitly disable GTK and GStreamer to prevent conflicts
+      --disable-gtk
+      --disable-gtk-vnc
+      --disable-vte      
+      --disable-gstreamer         
     ]
 
     # Sharing Samba directories in QEMU requires the samba.org smbd which is
