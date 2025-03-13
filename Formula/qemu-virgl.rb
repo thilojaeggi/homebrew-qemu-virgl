@@ -89,36 +89,56 @@ class QemuVirgl < Formula
     # Update wrapper script with proper indentation and formatting
     (bin/"qemu-wrapper").write <<~EOS
       #!/bin/bash
-  
+      
+      # Enable core dumps
+      ulimit -c unlimited
+      
       # ANGLE specific debug flags
       export ANGLE_CAPTURE_ENABLED=1
       export ANGLE_CAPTURE_FRAME_START=1
       export ANGLE_CAPTURE_FRAME_END=1
       export ANGLE_DEBUG=1
       export ANGLE_TRACE=1
-  
+      
+      # Enhanced crash debugging
+      export MallocStackLogging=1
+      export MallocStackLoggingNoCompact=1
+      export MallocScribble=1
+      export MallocPreScribble=1
+      
       # Set comprehensive debug flags
       export DYLD_PRINT_LIBRARIES=1
       export DYLD_PRINT_BINDINGS=1
       export DYLD_PRINT_INITIALIZERS=1
-  
+      export DYLD_PRINT_SEGMENTS=1
+      export DYLD_PRINT_APIS=1
+      
       # Library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
-  
+      
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
       export ANGLE_DEFAULT_PLATFORM=metal
-  
+      
       # Log both stdout and stderr with timestamps
       LOG_FILE="/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
-      exec 1> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
-      exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
-  
-      echo "=== Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S') ===" >&2
-      echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" >&2
-      echo "Command: #{bin}/$1 ${@:2}" >&2
-      exec "#{bin}/$1" "${@:2}"
+      CRASH_FILE="/tmp/qemu-crash-$(date +%Y%m%d-%H%M%S).log"
+      
+      # Run with crash handler
+      (
+        exec 1> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
+        exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
+        
+        echo "=== Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S') ===" >&2
+        echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" >&2
+        echo "Command: #{bin}/$1 ${@:2}" >&2
+        echo "Core dumps enabled: $(ulimit -c)" >&2
+        echo "Process ID: $$" >&2
+        
+        # Run QEMU with debug info
+        "#{bin}/$1" "${@:2}"
+      ) 2> >(tee -a "$CRASH_FILE")
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
