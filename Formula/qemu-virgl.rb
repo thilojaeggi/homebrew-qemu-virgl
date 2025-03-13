@@ -86,18 +86,36 @@ class QemuVirgl < Formula
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
     ]
 
-    # Modify the wrapper script in the formula:
+    # Create the wrapper script content
     (bin/"qemu-wrapper").write <<~EOS
       #!/bin/bash
-      # Set debug flags
+      # Set comprehensive debug flags
       export DYLD_PRINT_LIBRARIES=1
       export DYLD_PRINT_LIBRARIES_POST_LAUNCH=1
-      export ANGLE_DEBUG=1  
-      # Set library paths
-      export DYLD_FALLBACK_LIBRARY_PATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}:$DYLD_FALLBACK_LIBRARY_PATH"
-      export ANGLE_DEFAULT_PLATFORM=metal  
-      # Run with debug output
-      exec "#{bin}/$1" "${@:2}" 2>/tmp/qemu-debug.log
+      export DYLD_PRINT_BINDINGS=1
+      export DYLD_PRINT_INITIALIZERS=1
+      export DYLD_PRINT_SEGMENTS=1
+      export DYLD_PRINT_APIS=1
+      export ANGLE_DEBUG=1
+      export LIBGL_DEBUG=verbose
+      export MESA_DEBUG=1
+      
+      # Ensure library paths are set correctly
+      LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
+      LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
+      LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
+      
+      export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
+      export ANGLE_DEFAULT_PLATFORM=metal
+      
+      # Create debug log with timestamp
+      exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') $line"; done > "/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log")
+      
+      # Run QEMU with debug info
+      echo "Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S')" >&2
+      echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" >&2
+      echo "Command: #{bin}/$1 ${@:2}" >&2
+      exec "#{bin}/$1" "${@:2}"
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
