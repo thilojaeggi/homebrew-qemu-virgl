@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:43:41 UTC
+# Formula created by startergo on version 2025-03-13 03:50:55 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -84,17 +84,23 @@ class QemuVirgl < Formula
       #!/bin/bash
       set -e
       
-      # Basic setup - use user's home directory to avoid permission issues
+      # Basic setup - use user's home directory
       QEMU_DIR="$HOME/.qemu-virgl"
       QEMU_LOG_DIR="$QEMU_DIR/logs"
       QEMU_CORE_DIR="$QEMU_DIR/cores"
       mkdir -p "$QEMU_LOG_DIR" "$QEMU_CORE_DIR"
       
-      # Enable core dumps without changing system settings
-      ulimit -c unlimited
-      export QEMU_COREFILE="$QEMU_CORE_DIR/core.%e.%p"
+      # Set up logging and debugging
+      timestamp=$(date +%Y%m%d-%H%M%S)
+      export QEMU_LOG_FILE="$QEMU_LOG_DIR/qemu-$timestamp.log"
+      export QEMU_LOG="guest_errors,unimp"
+      export QEMU_CRASH_HANDLER=1
       
-      # Library paths - essential for operation
+      # Core dump settings
+      ulimit -c unlimited
+      cd "$QEMU_CORE_DIR"  # Change to cores directory before executing
+      
+      # Library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
@@ -103,10 +109,18 @@ class QemuVirgl < Formula
       # Basic ANGLE config
       export ANGLE_DEFAULT_PLATFORM=metal
       
-      # Enable crash reporting
-      export QEMU_DEBUG_CRASH=1
+      # Debug settings
+      export QEMU_DEBUG=1
+      export QEMU_DEBUG_LEVEL=debug
       
-      # Verify and execute QEMU
+      # Print diagnostic info
+      echo "QEMU configuration:"
+      echo "  Current directory: $(pwd)"
+      echo "  Log file: $QEMU_LOG_FILE"
+      echo "  Core directory: $QEMU_CORE_DIR"
+      echo "  Library path: $DYLD_FALLBACK_LIBRARY_PATH"
+      
+      # Verify QEMU command
       if [ -z "$1" ]; then
         echo "Error: No QEMU command specified"
         exit 1
@@ -118,13 +132,8 @@ class QemuVirgl < Formula
         exit 1
       fi
       
-      # Print diagnostic info
-      echo "QEMU directories:"
-      echo "  Logs: $QEMU_LOG_DIR"
-      echo "  Cores: $QEMU_CORE_DIR"
-      echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH"
-      
       shift
+      echo "Executing: $QEMU_CMD $*"
       exec "$QEMU_CMD" "$@"
     EOS
 
