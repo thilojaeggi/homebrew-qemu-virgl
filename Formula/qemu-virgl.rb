@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:50:55 UTC
+# Formula created by startergo on version 2025-03-13 04:00:03 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -90,15 +90,9 @@ class QemuVirgl < Formula
       QEMU_CORE_DIR="$QEMU_DIR/cores"
       mkdir -p "$QEMU_LOG_DIR" "$QEMU_CORE_DIR"
       
-      # Set up logging and debugging
+      # Timestamp for logs
       timestamp=$(date +%Y%m%d-%H%M%S)
-      export QEMU_LOG_FILE="$QEMU_LOG_DIR/qemu-$timestamp.log"
-      export QEMU_LOG="guest_errors,unimp"
-      export QEMU_CRASH_HANDLER=1
-      
-      # Core dump settings
-      ulimit -c unlimited
-      cd "$QEMU_CORE_DIR"  # Change to cores directory before executing
+      LOG_FILE="$QEMU_LOG_DIR/qemu-$timestamp.log"
       
       # Library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
@@ -109,32 +103,30 @@ class QemuVirgl < Formula
       # Basic ANGLE config
       export ANGLE_DEFAULT_PLATFORM=metal
       
-      # Debug settings
-      export QEMU_DEBUG=1
-      export QEMU_DEBUG_LEVEL=debug
-      
       # Print diagnostic info
       echo "QEMU configuration:"
-      echo "  Current directory: $(pwd)"
-      echo "  Log file: $QEMU_LOG_FILE"
+      echo "  Working directory: $(pwd)"
+      echo "  Log directory: $QEMU_LOG_DIR"
       echo "  Core directory: $QEMU_CORE_DIR"
       echo "  Library path: $DYLD_FALLBACK_LIBRARY_PATH"
       
       # Verify QEMU command
       if [ -z "$1" ]; then
-        echo "Error: No QEMU command specified"
+        echo "Error: No QEMU command specified" | tee -a "$LOG_FILE"
         exit 1
       fi
       
       QEMU_CMD="#{bin}/$1"
       if [ ! -x "$QEMU_CMD" ]; then
-        echo "Error: QEMU command not found: $QEMU_CMD"
+        echo "Error: QEMU command not found: $QEMU_CMD" | tee -a "$LOG_FILE"
         exit 1
       fi
       
       shift
-      echo "Executing: $QEMU_CMD $*"
-      exec "$QEMU_CMD" "$@"
+      echo "Executing: $QEMU_CMD $*" | tee -a "$LOG_FILE"
+      
+      # Run QEMU under lldb to capture crash information
+      lldb -o "run" -o "bt all" -o "quit" -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
