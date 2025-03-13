@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:15:19 UTC
+# Formula created by startergo on version 2025-03-13 03:22:08 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -86,16 +86,15 @@ class QemuVirgl < Formula
       
       # Basic setup
       QEMU_LOG_DIR="/tmp/qemu-logs"
-      MALLOC_LOG_DIR="/tmp/qemu-malloc-logs"
-      mkdir -p "$QEMU_LOG_DIR" "$MALLOC_LOG_DIR"
+      mkdir -p "$QEMU_LOG_DIR"
       
       # Single log file
       LOG_FILE="$QEMU_LOG_DIR/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
       
-      # Logging function
+      # Logging function that writes to both console and file
       log() {
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] $*" | tee -a "$LOG_FILE"
       }
       
       # ANGLE configuration
@@ -107,11 +106,6 @@ class QemuVirgl < Formula
       export ANGLE_LOG_LEVEL=debug
       export ANGLE_BACKEND_LOG_LEVEL=debug
       export ANGLE_DEFAULT_PLATFORM=metal
-      
-      # Memory debugging - minimal configuration to prevent log deletion
-      export MallocStackLogging=1
-      export MallocStackLoggingDirectory="$MALLOC_LOG_DIR"
-      export MallocStackLoggingRetainVMFrame=1
       
       # Dynamic linker debugging
       export DYLD_PRINT_LIBRARIES=1
@@ -125,6 +119,9 @@ class QemuVirgl < Formula
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
+      
+      # Core dumps
+      ulimit -c unlimited
       
       # Verify QEMU command
       if [ -z "$1" ]; then
@@ -142,8 +139,15 @@ class QemuVirgl < Formula
       shift
       log "Starting QEMU: $QEMU_CMD $*"
       log "Library Path: $DYLD_FALLBACK_LIBRARY_PATH"
-      log "Malloc Log Dir: $MALLOC_LOG_DIR"
-      exec "$QEMU_CMD" "$@" 2>> "$LOG_FILE" 1>&2
+      
+      # Run QEMU and capture its output
+      {
+        # Print QEMU command for debugging
+        log "Executing command..."
+        "$QEMU_CMD" "$@"
+      } 2>&1 | while IFS= read -r line; do
+        log "$line"
+      done
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
