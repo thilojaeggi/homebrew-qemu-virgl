@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 04:14:07 UTC
+# Formula created by startergo on version 2025-03-13 04:22:16 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -103,9 +103,11 @@ class QemuVirgl < Formula
       # Basic ANGLE config
       export ANGLE_DEFAULT_PLATFORM=metal
       
-      # QEMU coroutine debugging
+      # QEMU debugging
+      export QEMU_DEBUG=1
+      export QEMU_LOG="trace:*,guest_errors"
       export QEMU_COROUTINE_DEBUG=1
-      export QEMU_LOG="coroutine,unimp"
+      export QEMU_DEBUG_OPTS=1
       
       # Print diagnostic info
       echo "QEMU configuration:"
@@ -113,6 +115,7 @@ class QemuVirgl < Formula
       echo "  Log directory: $QEMU_LOG_DIR"
       echo "  Core directory: $QEMU_CORE_DIR"
       echo "  Library path: $DYLD_FALLBACK_LIBRARY_PATH"
+      echo "  Command args: $*"
       
       # Verify QEMU command
       if [ -z "$1" ]; then
@@ -130,13 +133,16 @@ class QemuVirgl < Formula
       echo "Executing: $QEMU_CMD $*" | tee -a "$LOG_FILE"
       
       # Run QEMU under lldb with enhanced debugging
-      lldb -o "settings set target.env-vars QEMU_COROUTINE_DEBUG=1" \\
-           -o "settings set target.env-vars QEMU_LOG=coroutine,unimp" \\
+      lldb -o "settings set target.env-vars QEMU_DEBUG=1" \\
+           -o "settings set target.env-vars QEMU_LOG=trace:*,guest_errors" \\
+           -o "settings set target.env-vars QEMU_COROUTINE_DEBUG=1" \\
+           -o "settings set target.env-vars QEMU_DEBUG_OPTS=1" \\
            -o "process handle -p true -s false -n false SIGUSR2" \\
+           -o "process handle -p true -s true SIGSEGV" \\
            -o "run" \\
-           -o "continue" \\
            -o "bt all" \\
            -o "thread backtrace all" \\
+           -o "register read" \\
            -o "quit" \\
            -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
