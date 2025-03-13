@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 05:08:08 UTC
+# Formula created by startergo on version 2025-03-13 05:14:20 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -7,8 +7,8 @@ class QemuVirgl < Formula
   license "GPL-2.0-only"
 
   depends_on "libtool" => :build
-  depends_on "meson" => :build 
-  depends_on "ninja" => :build
+  depends_on "meson" => :build
+  depends_on "ninja" => :build 
   depends_on "pkg-config" => :build
   depends_on "python@3.13" => :build
 
@@ -143,12 +143,12 @@ class QemuVirgl < Formula
            -o "process handle -p true -s true SIGSEGV" \\
            -o "b get_opt_value" \\
            -o "run" \\
-           -o "p *(char**)$x26" \\
-           -o "p (char*)0x000000010083da36" \\
-           -o "x/s 0x000000010083da36" \\
-           -o "memory read -s1 -fx 0x000000010083da36 0x000000010083da3b" \\
+           -o "register read x0 x1 x2 x26" \\
+           -o "p/x \$x26" \\
+           -o "expression -f char -Z5 -- (char*)\$x26" \\
+           -o "memory read --size 1 --format x --count 5 \$x26" \\
            -o "thread backtrace" \\
-           -o "memory read -s8 -fx \$sp \$sp+0x60" \\
+           -o "disassemble --frame" \\
            -o "si" \\
            -o "register read x0 x1 x2 x26 sp pc lr" \\
            -o "quit" \\
