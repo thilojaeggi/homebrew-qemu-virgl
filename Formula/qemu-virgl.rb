@@ -86,12 +86,18 @@ class QemuVirgl < Formula
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
     ]
 
-    # Create the wrapper script content
+    # Modify the wrapper script in the formula:
     (bin/"qemu-wrapper").write <<~EOS
       #!/bin/bash
+      # Set debug flags
+      export DYLD_PRINT_LIBRARIES=1
+      export DYLD_PRINT_LIBRARIES_POST_LAUNCH=1
+      export ANGLE_DEBUG=1  
+      # Set library paths
       export DYLD_FALLBACK_LIBRARY_PATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}:$DYLD_FALLBACK_LIBRARY_PATH"
-      export ANGLE_DEFAULT_PLATFORM=metal
-      exec "#{bin}/$1" "${@:2}"
+      export ANGLE_DEFAULT_PLATFORM=metal  
+      # Run with debug output
+      exec "#{bin}/$1" "${@:2}" 2>/tmp/qemu-debug.log
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
