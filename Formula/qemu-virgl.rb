@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 10:36:36 UTC
+# Formula created by startergo on version 2025-03-13 10:50:48 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -85,7 +85,7 @@ class QemuVirgl < Formula
       set -e
       
       # Version and user info
-      echo "QEMU Wrapper Version: 2025-03-13 10:36:36 UTC"
+      echo "QEMU Wrapper Version: 2025-03-13 10:50:48 UTC"
       echo "Current User: startergo"
       
       # Basic setup - use user's home directory
@@ -148,12 +148,12 @@ class QemuVirgl < Formula
            -o "b get_opt_value" \\
            -o "run" \\
            -o "register read x0 x1 x2 x26" \\
-           -o "expression -- (void*)0x10083da16" \\
-           -o "x/s 0x10083da16" \\
-           -o "memory read --size 1 --format x --count 8 0x10083da16" \\
+           -o "expression -- (const char*)0x10083da36" \\
+           -o "x/s 0x10083da36" \\
+           -o "memory read --size 1 --format x --count 8 0x10083da36" \\
            -o "thread backtrace" \\
            -o "disassemble --frame" \\
-           -o "register read all" \\
+           -o "register read" \\
            -o "memory read --size 8 --format x --count 16 \$sp" \\
            -o "si" \\
            -o "register read x0 x1 x2 x26 sp pc lr" \\

@@ -60,12 +60,17 @@ jobs:
             brew install --HEAD --build-from-source --formula "./$formula" --verbose || exit 1
           done
 
-      - name: Build and test qemu-virgl (known working version)
+      - name: Build and test qemu-virgl (working version)
         run: |
-          # Temporarily modify formula to use known working commit
-          sed -i.bak 's/ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7/99fc08366b06282614daeda989d2fde6ab8a707f/' Formula/qemu-virgl.rb
-          sed -i.bak 's/2025.03.08/20211212.1/' Formula/qemu-virgl.rb
-          sed -i.bak 's/qemu-v06.diff/qemu-v05.diff/' Formula/qemu-virgl.rb
+          cat > Formula/qemu-virgl.rb << 'EOL'
+          class QemuVirgl < Formula
+            desc "Emulator for x86 and PowerPC"
+            homepage "https://www.qemu.org/"
+            url "https://github.com/qemu/qemu.git", using: :git, revision: "99fc08366b06282614daeda989d2fde6ab8a707f"
+            version "20211212.1"
+            license "GPL-2.0-only"
+            # Rest of the formula content...
+          EOL
           HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
           brew install --build-from-source --formula ./Formula/qemu-virgl.rb --verbose || exit 1
           
