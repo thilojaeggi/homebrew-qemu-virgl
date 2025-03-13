@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:35:02 UTC
+# Formula created by startergo on version 2025-03-13 03:43:41 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -84,18 +84,15 @@ class QemuVirgl < Formula
       #!/bin/bash
       set -e
       
-      # Basic setup
-      QEMU_LOG_DIR="/tmp/qemu-logs"
-      CORE_DIR="/tmp/qemu-cores"
-      mkdir -p "$QEMU_LOG_DIR" "$CORE_DIR"
+      # Basic setup - use user's home directory to avoid permission issues
+      QEMU_DIR="$HOME/.qemu-virgl"
+      QEMU_LOG_DIR="$QEMU_DIR/logs"
+      QEMU_CORE_DIR="$QEMU_DIR/cores"
+      mkdir -p "$QEMU_LOG_DIR" "$QEMU_CORE_DIR"
       
-      # Log file and core pattern
-      LOG_FILE="$QEMU_LOG_DIR/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
-      CORE_PATTERN="$CORE_DIR/core.%e.%p"
-      
-      # Set core pattern and enable core dumps
+      # Enable core dumps without changing system settings
       ulimit -c unlimited
-      sudo sysctl -w kern.corefile="$CORE_PATTERN"
+      export QEMU_COREFILE="$QEMU_CORE_DIR/core.%e.%p"
       
       # Library paths - essential for operation
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
@@ -103,8 +100,11 @@ class QemuVirgl < Formula
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
       
-      # Basic ANGLE config - minimal required settings
+      # Basic ANGLE config
       export ANGLE_DEFAULT_PLATFORM=metal
+      
+      # Enable crash reporting
+      export QEMU_DEBUG_CRASH=1
       
       # Verify and execute QEMU
       if [ -z "$1" ]; then
@@ -117,6 +117,12 @@ class QemuVirgl < Formula
         echo "Error: QEMU command not found: $QEMU_CMD"
         exit 1
       fi
+      
+      # Print diagnostic info
+      echo "QEMU directories:"
+      echo "  Logs: $QEMU_LOG_DIR"
+      echo "  Cores: $QEMU_CORE_DIR"
+      echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH"
       
       shift
       exec "$QEMU_CMD" "$@"
