@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 02:33:55 UTC
+# Formula created by startergo on version 2025-03-13 02:44:46 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -88,7 +88,7 @@ class QemuVirgl < Formula
       ulimit -c unlimited
       export QEMU_CORE_PATTERN="/tmp/qemu-core-%e-%p-%t"
       
-      # ANGLE specific debug flags with error logging
+      # ANGLE specific debug flags
       export ANGLE_CAPTURE_ENABLED=1
       export ANGLE_CAPTURE_FRAME_START=1
       export ANGLE_CAPTURE_FRAME_END=1
@@ -96,59 +96,72 @@ class QemuVirgl < Formula
       export ANGLE_TRACE=1
       export ANGLE_LOG_LEVEL=debug
       export ANGLE_BACKEND_LOG_LEVEL=debug
+      export ANGLE_DEFAULT_PLATFORM=metal
       
-      # Enhanced crash debugging with specific paths
+      # Debug flags
       export MallocStackLogging=1
       export MallocStackLoggingNoCompact=1
       export MallocScribble=1
       export MallocPreScribble=1
       export MallocStackLoggingDirectory="/tmp/qemu-malloc-logs"
-      
-      # Create logging directory
-      mkdir -p "$MallocStackLoggingDirectory"
-      
-      # Set comprehensive debug flags
       export DYLD_PRINT_LIBRARIES=1
       export DYLD_PRINT_BINDINGS=1
       export DYLD_PRINT_INITIALIZERS=1
       export DYLD_PRINT_SEGMENTS=1
       export DYLD_PRINT_APIS=1
       
-      # Library paths with validation
+      # Create logging directory
+      mkdir -p "$MallocStackLoggingDirectory"
+      
+      # Set up library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
       
-      # Verify libraries exist
+      # Verify library paths
       for lib in $(echo $LIBPATH | tr ':' ' '); do
         if [ ! -d "$lib" ]; then
-          echo "Error: Library path does not exist: $lib" >&2
+          echo "[ERROR] Library path not found: $lib" >&2
           exit 1
         fi
       done
       
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
-      export ANGLE_DEFAULT_PLATFORM=metal
       
-      # Log both stdout and stderr with timestamps
+      # Set up logging
       LOG_FILE="/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
-      CRASH_FILE="/tmp/qemu-crash-$(date +%Y%m%d-%H%M%S).log"
       
-      # Run with enhanced crash handler
-      {
-        echo "=== Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S') ===" 
-        echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" 
-        echo "Command: #{bin}/$1 ${@:2}" 
-        echo "Core dumps enabled: $(ulimit -c)" 
-        echo "Process ID: $$" 
-        echo "ANGLE platform: $ANGLE_DEFAULT_PLATFORM" 
-        
-        # Run QEMU with debug info and trap errors
-        set -x
-        trap 'echo "Exit code: $?"' EXIT
-        #{Formula["coreutils"].opt_bin}/stdbuf -oL -eL "#{bin}/$1" "${@:2}"
-      } 2>&1 | while IFS= read -r line; do
-        echo "$(date '+%Y-%m-%d %H:%M:%S') $line" | tee -a "$LOG_FILE"
+      # Log the startup information
+      log_msg() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+      }
+      
+      log_msg "=== QEMU Wrapper Starting ==="
+      log_msg "Library Path: $DYLD_FALLBACK_LIBRARY_PATH"
+      log_msg "QEMU Command: #{bin}/$1 ${*:2}"
+      log_msg "Core Pattern: $QEMU_CORE_PATTERN"
+      log_msg "Process ID: $$"
+      log_msg "ANGLE Platform: $ANGLE_DEFAULT_PLATFORM"
+      
+      # Get the QEMU command
+      if [ -z "$1" ]; then
+        log_msg "Error: No QEMU command specified"
+        exit 1
+      fi
+      
+      QEMU_CMD="#{bin}/$1"
+      if [ ! -x "$QEMU_CMD" ]; then
+        log_msg "Error: QEMU command not found or not executable: $QEMU_CMD"
+        exit 1
+      fi
+      
+      # Shift off the first argument (QEMU command)
+      shift
+      
+      # Execute QEMU with all remaining arguments
+      log_msg "Executing: $QEMU_CMD $*"
+      exec "$QEMU_CMD" "$@" 2>&1 | while IFS= read -r line; do
+        log_msg "$line"
       done
     EOS
 
