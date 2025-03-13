@@ -31,14 +31,15 @@ jobs:
 
       - name: Update Formula
         run: |
-          CURRENT_UTC="2025-03-13 14:45:10"
+          CURRENT_UTC="2025-03-13 17:18:29"
           CURRENT_USER="startergo"
           
-          sed -i.bak \
-            -e 's|revision: ".*"|revision: "99fc08366b06282614daeda989d2fde6ab8a707f"|' \
-            -e '/patch :p1/,/end/ s|sha256 ".*"|sha256 "6d27699ba454b5ecb7411822a745b89dce3dea5fccabfb56c84ad698f3222dd4"|' \
-            -e "s|# Formula created by.*|# Formula created by ${CURRENT_USER} on version ${CURRENT_UTC} UTC|" \
-            Formula/qemu-virgl.rb
+          # Update formula creation comment, git revision, and patch block
+          sed -i.bak '1c\# Formula created by startergo on version 2025-03-13 17:18:29 UTC' Formula/qemu-virgl.rb
+          
+          sed -i.bak '/url.*github.com\/qemu\/qemu.git.*using: :git/ c\  url "https://github.com/qemu/qemu.git", using: :git, revision: "99fc08366b06282614daeda989d2fde6ab8a707f"' Formula/qemu-virgl.rb
+          
+          sed -i.bak '/patch :p1 do/,/^  end/ c\  patch :p1 do\n    url "https://raw.githubusercontent.com/startergo/homebrew-qemu-virgl/refs/heads/master/Patches/qemu-v05.diff"\n    sha256 "6d27699ba454b5ecb7411822a745b89dce3dea5fccabfb56c84ad698f3222dd4"\n  end' Formula/qemu-virgl.rb
 
       - name: Set up tap
         run: |
