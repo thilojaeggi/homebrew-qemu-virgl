@@ -1,8 +1,8 @@
-# Formula created by startergo on version 2025-03-13 04:48:08 UTC
+# Formula created by startergo on version 2025-03-13 04:54:29 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
-  url "https://github.com/qemu/qemu.git", using: :git, revision: "ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7"
+  url "https://github.com/qemu/qemu.git", using: :git, revision: "ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7" 
   version "2025.03.13"
   license "GPL-2.0-only"
 
@@ -14,7 +14,7 @@ class QemuVirgl < Formula
 
   depends_on "coreutils"
   depends_on "glib"
-  depends_on "gnutls" 
+  depends_on "gnutls"
   depends_on "jpeg"
   depends_on "startergo/homebrew-qemu-virgl/libangle"
   depends_on "startergo/homebrew-qemu-virgl/libepoxy-angle"
@@ -145,11 +145,13 @@ class QemuVirgl < Formula
            -o "run" \\
            -o "frame info" \\
            -o "frame variable -A" \\
-           -o "memory read -f x -c 32 \$x0" \\
-           -o "thread backtrace all" \\
+           -o "memory read -f x -s 8 \$x0 \$x0+256" \\
            -o "register read x0 x1 x2 x26" \\
+           -o "disassemble -b -p" \\
            -o "si" \\
-           -o "register read --all" \\
+           -o "register read x0 x1 x2 x26 sp pc" \\
+           -o "memory read -f x -s 8 \$sp \$sp+64" \\
+           -o "bt all" \\
            -o "quit" \\
            -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
