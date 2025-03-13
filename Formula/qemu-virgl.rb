@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:22:08 UTC
+# Formula created by startergo on version 2025-03-13 03:30:50 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -88,31 +88,34 @@ class QemuVirgl < Formula
       QEMU_LOG_DIR="/tmp/qemu-logs"
       mkdir -p "$QEMU_LOG_DIR"
       
-      # Single log file
+      # Single log file with timestamp
       LOG_FILE="$QEMU_LOG_DIR/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
       
-      # Logging function that writes to both console and file
+      # Logging function
       log() {
         local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
         echo "[$timestamp] $*" | tee -a "$LOG_FILE"
       }
       
-      # ANGLE configuration
-      export ANGLE_CAPTURE_ENABLED=1
-      export ANGLE_CAPTURE_FRAME_START=1
-      export ANGLE_CAPTURE_FRAME_END=1
-      export ANGLE_DEBUG=1
-      export ANGLE_TRACE=1
-      export ANGLE_LOG_LEVEL=debug
-      export ANGLE_BACKEND_LOG_LEVEL=debug
-      export ANGLE_DEFAULT_PLATFORM=metal
+      # Error handler
+      handle_error() {
+        local exit_code=$?
+        log "Error: Command failed with exit code $exit_code"
+        log "Stack trace:"
+        local frame=0
+        while caller $frame; do
+          ((frame++))
+        done | while read line; do
+          log "  $line"
+        done
+        exit $exit_code
+      }
       
-      # Dynamic linker debugging
-      export DYLD_PRINT_LIBRARIES=1
-      export DYLD_PRINT_BINDINGS=1
-      export DYLD_PRINT_INITIALIZERS=1
-      export DYLD_PRINT_SEGMENTS=1
-      export DYLD_PRINT_APIS=1
+      trap handle_error ERR
+      
+      # ANGLE configuration - minimal for testing
+      export ANGLE_DEFAULT_PLATFORM=metal
+      export ANGLE_LOG_LEVEL=debug
       
       # Library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
@@ -122,6 +125,7 @@ class QemuVirgl < Formula
       
       # Core dumps
       ulimit -c unlimited
+      export QEMU_DEBUG=1
       
       # Verify QEMU command
       if [ -z "$1" ]; then
@@ -135,19 +139,16 @@ class QemuVirgl < Formula
         exit 1
       fi
       
-      # Execute QEMU with logging
-      shift
-      log "Starting QEMU: $QEMU_CMD $*"
-      log "Library Path: $DYLD_FALLBACK_LIBRARY_PATH"
+      # Log system information
+      log "System information:"
+      log "  DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH"
+      log "  QEMU_CMD=$QEMU_CMD"
+      log "  Arguments=${*:2}"
       
-      # Run QEMU and capture its output
-      {
-        # Print QEMU command for debugging
-        log "Executing command..."
-        "$QEMU_CMD" "$@"
-      } 2>&1 | while IFS= read -r line; do
-        log "$line"
-      done
+      # Execute QEMU directly
+      shift
+      log "Executing: $QEMU_CMD $*"
+      exec "$QEMU_CMD" "$@"
     EOS
 
     chmod 0755, "#{bin}/qemu-wrapper"
