@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 04:06:31 UTC
+# Formula created by startergo on version 2025-03-13 04:14:07 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -129,11 +129,14 @@ class QemuVirgl < Formula
       shift
       echo "Executing: $QEMU_CMD $*" | tee -a "$LOG_FILE"
       
-      # Run QEMU under lldb with coroutine debugging
+      # Run QEMU under lldb with enhanced debugging
       lldb -o "settings set target.env-vars QEMU_COROUTINE_DEBUG=1" \\
            -o "settings set target.env-vars QEMU_LOG=coroutine,unimp" \\
+           -o "process handle -p true -s false -n false SIGUSR2" \\
            -o "run" \\
+           -o "continue" \\
            -o "bt all" \\
+           -o "thread backtrace all" \\
            -o "quit" \\
            -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
