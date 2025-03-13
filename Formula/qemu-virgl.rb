@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 04:33:29 UTC
+# Formula created by startergo on version 2025-03-13 04:40:52 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -143,9 +143,11 @@ class QemuVirgl < Formula
            -o "process handle -p true -s true SIGSEGV" \\
            -o "b get_opt_value" \\
            -o "run" \\
-           -o "bt all" \\
-           -o "thread backtrace all" \\
+           -o "frame variable" \\
+           -o "p *opts" \\
+           -o "n" \\
            -o "register read --all" \\
+           -o "bt all" \\
            -o "quit" \\
            -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
