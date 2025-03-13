@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 03:30:50 UTC
+# Formula created by startergo on version 2025-03-13 03:35:02 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -86,68 +86,39 @@ class QemuVirgl < Formula
       
       # Basic setup
       QEMU_LOG_DIR="/tmp/qemu-logs"
-      mkdir -p "$QEMU_LOG_DIR"
+      CORE_DIR="/tmp/qemu-cores"
+      mkdir -p "$QEMU_LOG_DIR" "$CORE_DIR"
       
-      # Single log file with timestamp
+      # Log file and core pattern
       LOG_FILE="$QEMU_LOG_DIR/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
+      CORE_PATTERN="$CORE_DIR/core.%e.%p"
       
-      # Logging function
-      log() {
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] $*" | tee -a "$LOG_FILE"
-      }
+      # Set core pattern and enable core dumps
+      ulimit -c unlimited
+      sudo sysctl -w kern.corefile="$CORE_PATTERN"
       
-      # Error handler
-      handle_error() {
-        local exit_code=$?
-        log "Error: Command failed with exit code $exit_code"
-        log "Stack trace:"
-        local frame=0
-        while caller $frame; do
-          ((frame++))
-        done | while read line; do
-          log "  $line"
-        done
-        exit $exit_code
-      }
-      
-      trap handle_error ERR
-      
-      # ANGLE configuration - minimal for testing
-      export ANGLE_DEFAULT_PLATFORM=metal
-      export ANGLE_LOG_LEVEL=debug
-      
-      # Library paths
+      # Library paths - essential for operation
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
       
-      # Core dumps
-      ulimit -c unlimited
-      export QEMU_DEBUG=1
+      # Basic ANGLE config - minimal required settings
+      export ANGLE_DEFAULT_PLATFORM=metal
       
-      # Verify QEMU command
+      # Verify and execute QEMU
       if [ -z "$1" ]; then
-        log "Error: No QEMU command specified"
+        echo "Error: No QEMU command specified"
         exit 1
       fi
       
       QEMU_CMD="#{bin}/$1"
       if [ ! -x "$QEMU_CMD" ]; then
-        log "Error: QEMU command not found: $QEMU_CMD"
+        echo "Error: QEMU command not found: $QEMU_CMD"
         exit 1
       fi
       
-      # Log system information
-      log "System information:"
-      log "  DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH"
-      log "  QEMU_CMD=$QEMU_CMD"
-      log "  Arguments=${*:2}"
-      
-      # Execute QEMU directly
       shift
-      log "Executing: $QEMU_CMD $*"
       exec "$QEMU_CMD" "$@"
     EOS
 
