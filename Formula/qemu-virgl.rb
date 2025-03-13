@@ -86,33 +86,36 @@ class QemuVirgl < Formula
       --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
     ]
 
-    # Create the wrapper script content
+    # Update wrapper script with proper indentation and formatting
     (bin/"qemu-wrapper").write <<~EOS
       #!/bin/bash
+  
+      # ANGLE specific debug flags
+      export ANGLE_CAPTURE_ENABLED=1
+      export ANGLE_CAPTURE_FRAME_START=1
+      export ANGLE_CAPTURE_FRAME_END=1
+      export ANGLE_DEBUG=1
+      export ANGLE_TRACE=1
+  
       # Set comprehensive debug flags
       export DYLD_PRINT_LIBRARIES=1
-      export DYLD_PRINT_LIBRARIES_POST_LAUNCH=1
       export DYLD_PRINT_BINDINGS=1
       export DYLD_PRINT_INITIALIZERS=1
-      export DYLD_PRINT_SEGMENTS=1
-      export DYLD_PRINT_APIS=1
-      export ANGLE_DEBUG=1
-      export LIBGL_DEBUG=verbose
-      export MESA_DEBUG=1
-      
-      # Ensure library paths are set correctly
+  
+      # Library paths
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
-      
+  
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
       export ANGLE_DEFAULT_PLATFORM=metal
-      
-      # Create debug log with timestamp
-      exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') $line"; done > "/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log")
-      
-      # Run QEMU with debug info
-      echo "Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S')" >&2
+  
+      # Log both stdout and stderr with timestamps
+      LOG_FILE="/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
+      exec 1> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
+      exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
+  
+      echo "=== Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S') ===" >&2
       echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" >&2
       echo "Command: #{bin}/$1 ${@:2}" >&2
       exec "#{bin}/$1" "${@:2}"
