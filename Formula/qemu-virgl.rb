@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 02:03:16 UTC
+# Formula created by startergo on version 2025-03-13 02:17:39 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -12,6 +12,7 @@ class QemuVirgl < Formula
   depends_on "pkg-config" => :build
   depends_on "python@3.13" => :build
 
+  depends_on "coreutils"
   depends_on "glib"
   depends_on "gnutls"
   depends_on "jpeg"
@@ -143,7 +144,7 @@ class QemuVirgl < Formula
       # Run with enhanced crash handler
       (
         # Redirect output with line buffering
-        stdbuf -oL -eL \\
+        "#{Formula["coreutils"].opt_bin}/stdbuf" -oL -eL \\
         exec 1> >(while IFS= read -r line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
         exec 2> >(while IFS= read -r line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
         
