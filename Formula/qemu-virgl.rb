@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 00:35:44 UTC
+# Formula created by startergo on version 2025-03-13 02:03:16 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -90,21 +90,28 @@ class QemuVirgl < Formula
     (bin/"qemu-wrapper").write <<~EOS
       #!/bin/bash
       
-      # Enable core dumps
+      # Enable core dumps with specific location
       ulimit -c unlimited
+      export QEMU_CORE_PATTERN="/tmp/qemu-core-%e-%p-%t"
       
-      # ANGLE specific debug flags
+      # ANGLE specific debug flags with error logging
       export ANGLE_CAPTURE_ENABLED=1
       export ANGLE_CAPTURE_FRAME_START=1
       export ANGLE_CAPTURE_FRAME_END=1
       export ANGLE_DEBUG=1
       export ANGLE_TRACE=1
+      export ANGLE_LOG_LEVEL=debug
+      export ANGLE_BACKEND_LOG_LEVEL=debug
       
-      # Enhanced crash debugging
+      # Enhanced crash debugging with specific paths
       export MallocStackLogging=1
       export MallocStackLoggingNoCompact=1
       export MallocScribble=1
       export MallocPreScribble=1
+      export MallocStackLoggingDirectory="/tmp/qemu-malloc-logs"
+      
+      # Create logging directory
+      mkdir -p "$MallocStackLoggingDirectory"
       
       # Set comprehensive debug flags
       export DYLD_PRINT_LIBRARIES=1
@@ -113,10 +120,18 @@ class QemuVirgl < Formula
       export DYLD_PRINT_SEGMENTS=1
       export DYLD_PRINT_APIS=1
       
-      # Library paths
+      # Library paths with validation
       LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
       LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
+      
+      # Verify libraries exist
+      for lib in $(echo $LIBPATH | tr ':' ' '); do
+        if [ ! -d "$lib" ]; then
+          echo "Error: Library path does not exist: $lib" >&2
+          exit 1
+        fi
+      done
       
       export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
       export ANGLE_DEFAULT_PLATFORM=metal
@@ -125,18 +140,23 @@ class QemuVirgl < Formula
       LOG_FILE="/tmp/qemu-debug-$(date +%Y%m%d-%H%M%S).log"
       CRASH_FILE="/tmp/qemu-crash-$(date +%Y%m%d-%H%M%S).log"
       
-      # Run with crash handler
+      # Run with enhanced crash handler
       (
-        exec 1> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
-        exec 2> >(while read line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
+        # Redirect output with line buffering
+        stdbuf -oL -eL \\
+        exec 1> >(while IFS= read -r line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [OUT] $line"; done >> "$LOG_FILE")
+        exec 2> >(while IFS= read -r line; do echo "$(date '+%Y-%m-%d %H:%M:%S') [ERR] $line"; done >> "$LOG_FILE")
         
         echo "=== Starting QEMU wrapper at $(date '+%Y-%m-%d %H:%M:%S') ===" >&2
         echo "Library path: $DYLD_FALLBACK_LIBRARY_PATH" >&2
         echo "Command: #{bin}/$1 ${@:2}" >&2
         echo "Core dumps enabled: $(ulimit -c)" >&2
         echo "Process ID: $$" >&2
+        echo "ANGLE platform: $ANGLE_DEFAULT_PLATFORM" >&2
         
-        # Run QEMU with debug info
+        # Run QEMU with debug info and trap errors
+        set -x
+        trap 'echo "Exit code: $?" >&2' EXIT
         "#{bin}/$1" "${@:2}"
       ) 2> >(tee -a "$CRASH_FILE")
     EOS
