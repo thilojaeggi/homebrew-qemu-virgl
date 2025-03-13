@@ -24,56 +24,38 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
+
       - name: Set up Homebrew
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Update Formula
+        run: |
+          CURRENT_UTC="2025-03-13 14:45:10"
+          CURRENT_USER="startergo"
+          
+          sed -i.bak \
+            -e 's|revision: ".*"|revision: "99fc08366b06282614daeda989d2fde6ab8a707f"|' \
+            -e '/patch :p1/,/end/ s|sha256 ".*"|sha256 "6d27699ba454b5ecb7411822a745b89dce3dea5fccabfb56c84ad698f3222dd4"|' \
+            -e "s|# Formula created by.*|# Formula created by ${CURRENT_USER} on version ${CURRENT_UTC} UTC|" \
+            Formula/qemu-virgl.rb
 
       - name: Set up tap
         run: |
           mkdir -p $(brew --prefix)/Homebrew/Library/Taps/startergo
           ln -s ${{ github.workspace }} $(brew --prefix)/Homebrew/Library/Taps/startergo/homebrew-qemu-virgl
 
-      - name: Cache Homebrew downloads
-        uses: actions/cache@v3
-        with:
-          path: ~/Library/Caches/Homebrew
-          key: brew-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            brew-${{ runner.os }}-
-
-      - name: Build HEAD dependencies
+      - name: Build dependencies
         run: |
-          brew update
-          # Build dependencies one by one with explicit formula paths
-          FORMULAS=(
-            "Formula/libangle.rb"
-            "Formula/libepoxy-angle.rb"
-            "Formula/virglrenderer.rb"
-          )
-          
-          for formula in "${FORMULAS[@]}"; do
-            echo "Building $formula..."
-            HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
-            brew install --HEAD --build-from-source --formula "./$formula" --verbose || exit 1
-          done
+          brew install --HEAD --build-from-source --formula ./Formula/libangle.rb
+          brew install --HEAD --build-from-source --formula ./Formula/libepoxy-angle.rb
+          brew install --HEAD --build-from-source --formula ./Formula/virglrenderer.rb
 
-      - name: Build and test qemu-virgl (working version)
+      - name: Build and test qemu-virgl
         run: |
-          cat > Formula/qemu-virgl.rb << 'EOL'
-          class QemuVirgl < Formula
-            desc "Emulator for x86 and PowerPC"
-            homepage "https://www.qemu.org/"
-            url "https://github.com/qemu/qemu.git", using: :git, revision: "99fc08366b06282614daeda989d2fde6ab8a707f"
-            version "20211212.1"
-            license "GPL-2.0-only"
-            # Rest of the formula content...
-          EOL
           HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
           brew install --build-from-source --formula ./Formula/qemu-virgl.rb --verbose || exit 1
-          
+
       - name: Test QEMU functionality
         run: |
           qemu-system-x86_64 --version
