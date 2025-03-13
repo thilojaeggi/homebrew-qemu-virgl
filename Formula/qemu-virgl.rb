@@ -1,4 +1,4 @@
-# Formula created by startergo on version 2025-03-13 04:40:52 UTC
+# Formula created by startergo on version 2025-03-13 04:48:08 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
@@ -14,7 +14,7 @@ class QemuVirgl < Formula
 
   depends_on "coreutils"
   depends_on "glib"
-  depends_on "gnutls"
+  depends_on "gnutls" 
   depends_on "jpeg"
   depends_on "startergo/homebrew-qemu-virgl/libangle"
   depends_on "startergo/homebrew-qemu-virgl/libepoxy-angle"
@@ -143,11 +143,13 @@ class QemuVirgl < Formula
            -o "process handle -p true -s true SIGSEGV" \\
            -o "b get_opt_value" \\
            -o "run" \\
-           -o "frame variable" \\
-           -o "p *opts" \\
-           -o "n" \\
+           -o "frame info" \\
+           -o "frame variable -A" \\
+           -o "memory read -f x -c 32 \$x0" \\
+           -o "thread backtrace all" \\
+           -o "register read x0 x1 x2 x26" \\
+           -o "si" \\
            -o "register read --all" \\
-           -o "bt all" \\
            -o "quit" \\
            -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
     EOS
