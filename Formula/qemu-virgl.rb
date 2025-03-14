@@ -1,9 +1,9 @@
-# Formula created by startergo on version 2025-03-13 10:50:48 UTC
+# Formula created by startergo on version 2025-03-14 00:44:50 UTC
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC"
   homepage "https://www.qemu.org/"
   url "https://github.com/qemu/qemu.git", using: :git, revision: "ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7"
-  version "2025.03.13"
+  version "2025.03.14"
   license "GPL-2.0-only"
 
   depends_on "libtool" => :build
@@ -13,12 +13,13 @@ class QemuVirgl < Formula
   depends_on "python@3.13" => :build
 
   depends_on "coreutils"
+  depends_on "dtc"
   depends_on "glib"
   depends_on "gnutls"
   depends_on "jpeg"
-  depends_on "startergo/homebrew-qemu-virgl/libangle"
-  depends_on "startergo/homebrew-qemu-virgl/libepoxy-angle"
-  depends_on "startergo/homebrew-qemu-virgl/virglrenderer"
+  depends_on "startergo/qemu-virgl/libangle"
+  depends_on "startergo/qemu-virgl/libepoxy-angle"
+  depends_on "startergo/qemu-virgl/virglrenderer"
   depends_on "libpng"
   depends_on "libssh"
   depends_on "libusb"
@@ -47,6 +48,7 @@ class QemuVirgl < Formula
 
   def install
     ENV["LIBTOOL"] = "glibtool"
+    
     python3 = Formula["python@3.13"].opt_bin/"python3.13"
     ENV["PYTHON"] = python3
 
@@ -65,104 +67,32 @@ class QemuVirgl < Formula
       --prefix=#{prefix}
       --cc=#{ENV.cc}
       --host-cc=#{ENV.cc}
-      --enable-curses
-      --enable-libssh
-      --enable-vde
-      --enable-virtfs
+      
+      # Disable unnecessary features
+      --disable-bsd-user
+      --disable-guest-agent
       --disable-sdl
       --disable-gtk
-      --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/include
-      --extra-cflags=-march=armv8-a+crc+crypto
-      --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_prefix}/lib
-    ]
+            
+      --enable-debug
+      --enable-debug-info
+      --enable-trace-backends=log,simple
+      --enable-malloc=system
+      --enable-fdt=system
+      
+      # Include paths
+      --extra-cflags=-I#{Formula["libangle"].opt_prefix}/include
+      --extra-cflags=-I#{Formula["libepoxy-angle"].opt_prefix}/include
+      --extra-cflags=-I#{Formula["virglrenderer"].opt_prefix}/include
+      --extra-cflags=-I#{Formula["spice-protocol"].opt_prefix}/include/spice-1
 
-    (bin/"qemu-wrapper").write <<~EOS
-      #!/bin/bash
-      set -e
-      
-      # Version and user info
-      echo "QEMU Wrapper Version: 2025-03-13 10:50:48 UTC"
-      echo "Current User: startergo"
-      
-      # Basic setup - use user's home directory
-      QEMU_DIR="$HOME/.qemu-virgl"
-      QEMU_LOG_DIR="$QEMU_DIR/logs"
-      QEMU_CORE_DIR="$QEMU_DIR/cores"
-      mkdir -p "$QEMU_LOG_DIR" "$QEMU_CORE_DIR"
-      
-      # Timestamp for logs
-      timestamp=$(date +%Y%m%d-%H%M%S)
-      LOG_FILE="$QEMU_LOG_DIR/qemu-$timestamp.log"
-      
       # Library paths
-      LIBPATH="#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_lib}"
-      LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"].opt_lib}"
-      LIBPATH="$LIBPATH:#{Formula["startergo/homebrew-qemu-virgl/virglrenderer"].opt_lib}"
-      export DYLD_FALLBACK_LIBRARY_PATH="$LIBPATH:$DYLD_FALLBACK_LIBRARY_PATH"
-      
-      # Basic ANGLE config
-      export ANGLE_DEFAULT_PLATFORM=metal
-      
-      # QEMU debugging
-      export QEMU_DEBUG=1
-      export QEMU_LOG="trace:*,guest_errors"
-      export QEMU_COROUTINE_DEBUG=1
-      export QEMU_DEBUG_OPTS=1
-      export QEMU_OPTION_INIT=1
-      
-      # Print diagnostic info
-      echo "QEMU configuration:"
-      echo "  Working directory: $(pwd)"
-      echo "  Log directory: $QEMU_LOG_DIR"
-      echo "  Core directory: $QEMU_CORE_DIR"
-      echo "  Library path: $DYLD_FALLBACK_LIBRARY_PATH"
-      echo "  Command args: $*"
-      
-      # Verify QEMU command
-      if [ -z "$1" ]; then
-        echo "Error: No QEMU command specified" | tee -a "$LOG_FILE"
-        exit 1
-      fi
-      
-      QEMU_CMD="#{bin}/$1"
-      if [ ! -x "$QEMU_CMD" ]; then
-        echo "Error: QEMU command not found: $QEMU_CMD" | tee -a "$LOG_FILE"
-        exit 1
-      fi
-      
-      shift
-      echo "Executing: $QEMU_CMD $*" | tee -a "$LOG_FILE"
-      
-      # Run QEMU under lldb with enhanced debugging
-      lldb -o "settings set target.env-vars QEMU_DEBUG=1" \\
-           -o "settings set target.env-vars QEMU_LOG=trace:*,guest_errors" \\
-           -o "settings set target.env-vars QEMU_COROUTINE_DEBUG=1" \\
-           -o "settings set target.env-vars QEMU_DEBUG_OPTS=1" \\
-           -o "settings set target.env-vars QEMU_OPTION_INIT=1" \\
-           -o "process handle -p true -s false -n false SIGUSR2" \\
-           -o "process handle -p true -s true SIGSEGV" \\
-           -o "b get_opt_value" \\
-           -o "run" \\
-           -o "register read x0 x1 x2 x26" \\
-           -o "expression -- (const char*)0x10083da36" \\
-           -o "x/s 0x10083da36" \\
-           -o "memory read --size 1 --format x --count 8 0x10083da36" \\
-           -o "thread backtrace" \\
-           -o "disassemble --frame" \\
-           -o "register read" \\
-           -o "memory read --size 8 --format x --count 16 \$sp" \\
-           -o "si" \\
-           -o "register read x0 x1 x2 x26 sp pc lr" \\
-           -o "quit" \\
-           -- "$QEMU_CMD" "$@" 2>&1 | tee -a "$LOG_FILE"
-    EOS
-
-    chmod 0755, "#{bin}/qemu-wrapper"
-
+      --extra-ldflags=-L#{Formula["libangle"].opt_prefix}/lib
+      --extra-ldflags=-L#{Formula["libepoxy-angle"].opt_prefix}/lib
+      --extra-ldflags=-L#{Formula["virglrenderer"].opt_prefix}/lib
+    ]
+    
+    
     args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
     args << "--enable-cocoa" if OS.mac?
 
@@ -185,9 +115,17 @@ class QemuVirgl < Formula
 
     system "#{bin}/qemu-wrapper", "qemu-system-aarch64", "-accel", "help"
 
+    # Test standard VM
     system "#{bin}/qemu-wrapper", "qemu-system-aarch64", \
            "-machine", "virt,accel=hvf", \
            "-cpu", "host", \
+           "-display", "none", \
+           "-m", "64"
+
+    # Test coroutine debugging
+    system "#{bin}/qemu-wrapper", "qemu-system-aarch64", \
+           "-machine", "virt", \
+           "-cpu", "cortex-a72", \
            "-display", "none", \
            "-m", "64"
   end
