@@ -1,8 +1,10 @@
-# Formula created by startergo on version 2025-03-14 00:44:50 UTC
+# Formula created by startergo on version 2025-03-14 02:01:29 UTC
 class QemuVirgl < Formula
-  desc "Emulator for x86 and PowerPC"
+  desc "Emulator for x86 and PowerPC with macOS-specific optimizations"
   homepage "https://www.qemu.org/"
-  url "https://github.com/qemu/qemu.git", using: :git, revision: "ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7"
+  
+  # Using akihikodaki's macos branch directly instead of patching
+  url "https://github.com/akihikodaki/qemu.git", branch: "macos"
   version "2025.03.14"
   license "GPL-2.0-only"
 
@@ -41,14 +43,8 @@ class QemuVirgl < Formula
     sha256 "81237c7b42dc0ffc8b32a2f5734e3480a3f9a470c50c14a9c4576a2561a35807"
   end
 
-  patch :p1 do
-    url "https://raw.githubusercontent.com/startergo/homebrew-qemu-virgl/refs/heads/master/Patches/qemu-v06.diff"
-    sha256 "61e9138e102a778099b96fb00cffce2ba65040c1f97f2316da3e7ef2d652034b"
-  end
-
   def install
     ENV["LIBTOOL"] = "glibtool"
-    
     python3 = Formula["python@3.13"].opt_bin/"python3.13"
     ENV["PYTHON"] = python3
 
@@ -63,35 +59,29 @@ class QemuVirgl < Formula
     ENV["PYTHON"] = venv_python
     ENV.prepend_path "PYTHONPATH", venv_path/"lib/python3.13/site-packages"
 
-    args = %W[
-      --prefix=#{prefix}
-      --cc=#{ENV.cc}
-      --host-cc=#{ENV.cc}
-      
-      # Disable unnecessary features
-      --disable-bsd-user
-      --disable-guest-agent
-      --disable-sdl
-      --disable-gtk
-            
-      --enable-debug
-      --enable-debug-info
-      --enable-trace-backends=log,simple
-      --enable-malloc=system
-      --enable-fdt=system
-      
-      # Include paths
-      --extra-cflags=-I#{Formula["libangle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["libepoxy-angle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["virglrenderer"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["spice-protocol"].opt_prefix}/include/spice-1
-
-      # Library paths
-      --extra-ldflags=-L#{Formula["libangle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["libepoxy-angle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["virglrenderer"].opt_prefix}/lib
+    # Define arguments without comments that were causing build failures
+    args = [
+      "--prefix=#{prefix}",
+      "--cc=#{ENV.cc}",
+      "--host-cc=#{ENV.cc}",
+      "--disable-bsd-user",
+      "--disable-guest-agent",
+      "--disable-sdl",
+      "--disable-gtk",
+      "--enable-debug",
+      "--enable-debug-info",
+      "--enable-trace-backends=log,simple",
+      "--enable-malloc=system",
+      "--enable-fdt=system",
+      "--extra-cflags=-I#{Formula["libangle"].opt_prefix}/include",
+      "--extra-cflags=-I#{Formula["libepoxy-angle"].opt_prefix}/include",
+      "--extra-cflags=-I#{Formula["virglrenderer"].opt_prefix}/include",
+      "--extra-cflags=-I#{Formula["spice-protocol"].opt_prefix}/include/spice-1",
+      "--extra-cflags=-DNCURSES_WIDECHAR=1",
+      "--extra-ldflags=-L#{Formula["libangle"].opt_prefix}/lib",
+      "--extra-ldflags=-L#{Formula["libepoxy-angle"].opt_prefix}/lib",
+      "--extra-ldflags=-L#{Formula["virglrenderer"].opt_prefix}/lib"
     ]
-    
     
     args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
     args << "--enable-cocoa" if OS.mac?
