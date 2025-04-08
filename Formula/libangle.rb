@@ -1,103 +1,90 @@
-require "download_strategy"
-
-class NoSubmoduleGitDownloadStrategy < GitDownloadStrategy
-  def stage
-    # Set environment configuration to force detached head advice
-    system "git", "config", "advice.detachedHead", "true"
-    # Ensure submodules are not initialized or updated
-    system "git", "config", "--local", "submodule.recurse", "false"
-    # Fetch the main branch explicitly
-    system "git", "config", "--replace-all", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main"
-    system "git", "fetch", "origin", "main"
-    system "git", "checkout", "main"
-    super
-  end
-
-  def git_env
-    {
-      "GIT_TERMINAL_PROMPT" => "0",
-      "GIT_SSH_COMMAND" => "/usr/bin/ssh -oBatchMode=yes",
-      "GIT_ASKPASS" => "/bin/echo"
-    }
-  end
-
-  def submodule(*)
-    # Override submodule method to do nothing
-  end
-
-  def submodules
-    # Override submodules method to return an empty array
-    []
-  end
-
-  def update_submodules(ctx = nil)
-    # Override update_submodules to skip submodule sync
-  end
-end
-
 class Libangle < Formula
   desc "Conformant OpenGL ES implementation for Windows, Mac, Linux, iOS and Android"
   homepage "https://chromium.googlesource.com/angle/angle"
-  head "https://chromium.googlesource.com/angle/angle.git", using: NoSubmoduleGitDownloadStrategy, branch: "main"
+  url "https://github.com/startergo/homebrew-qemu-virgl/releases/download/v20250309.1/libangle-20250309.1.arm64_sonoma.bottle.tar.gz"
+  version "20250309.1"
+  sha256 "748d93eeabbc36f740e84338393deea0167c49da70e069708c54f5767003d12f"
   license "BSD-3-Clause"
 
   depends_on "meson" => :build
   depends_on "ninja" => :build
   depends_on "python@3.13" => :build
 
-  def install
-    depot_tools_path = HOMEBREW_CACHE/"libangle--depot_tools--git"
-    unless File.directory?(depot_tools_path)
-      # Manually initialize and fetch depot_tools
-      system "git", "init", depot_tools_path
-      system "git", "-C", depot_tools_path, "fetch", "https://chromium.googlesource.com/chromium/tools/depot_tools", "--depth", "1"
-      system "git", "-C", depot_tools_path, "checkout", "FETCH_HEAD"
-    end
-    ENV.prepend_path "PATH", depot_tools_path
-    ENV["DEPOT_TOOLS_UPDATE"] = "0"
-
-    # Determine the SDKROOT dynamically
-    sdkroot = `xcodebuild -sdk macosx -version Path`.strip
-    ENV["SDKROOT"] = sdkroot
-    macos_deployment_target = "13.3"
-
-    # Manually initialize and fetch angle without submodules
-    system "git", "clone", "--depth", "1", "--branch", "main", "https://chromium.googlesource.com/angle/angle", "source/angle"
-    cd "source/angle" do
-      if File.exist?("scripts/bootstrap.py")
-        system "python3", "scripts/bootstrap.py"
-      else
-        odie "scripts/bootstrap.py not found"
-      end
-
-      # Sync the dependencies without hooks
-      system "gclient", "sync", "--nohooks", "--no-history", "--shallow", "--no-nag-max"
-
-      # Update clang to the expected version
-      system "python3", "tools/clang/scripts/update.py"
-
-      # Add necessary flags to the gn args
-      gn_args = %W[
-        use_custom_libcxx=true  # Set use_custom_libcxx to true: This is required for PartitionAlloc to work.
-        treat_warnings_as_errors=false
-        mac_deployment_target="#{macos_deployment_target}"
-        extra_cflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot} -D_LIBCPP_BUILDING_LIBRARY"
-        extra_cxxflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot} -D_LIBCPP_BUILDING_LIBRARY"
-        extra_ldflags="-mmacosx-version-min=#{macos_deployment_target} -isysroot #{sdkroot}"
-        pdf_use_partition_alloc=false  # Add pdf_use_partition_alloc=false: This setting is added to the GN configuration to disable PartitionAlloc.
-      ]
-      gn_args << 'target_cpu="arm64"' if Hardware::CPU.arm?
-
-      system "gn", "gen", "angle_build", "--args=#{gn_args.join(' ')}"
-      system "ninja", "-C", "angle_build"
+  resource "testfile" do
+    url "https://raw.githubusercontent.com/google/angle/main/include/EGL/eglplatform.h"
+    sha256 "b748729767798d85ecf8e1923552879328a76d572327b641ce737549b391cc9c"
+  end
+  
+  def caveats
+    homebrew_prefix = HOMEBREW_PREFIX # This will be /opt/homebrew on ARM, /usr/local on Intel
+    
+    <<~EOS
+      To use libangle with QEMU, add this to your environment before running QEMU:
       
-      lib.install "angle_build/libEGL.dylib"
-      lib.install "angle_build/libGLESv2.dylib"      
-      include.install Pathname.glob("include/*")
-    end
+      export DYLD_FALLBACK_LIBRARY_PATH="#{homebrew_prefix}/opt/libangle/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+      
+      Or create a helper script to run QEMU (for Apple Silicon Macs):
+      
+      cat > run-qemu.sh <<EOF
+      #!/bin/bash
+      exec sudo DYLD_FALLBACK_LIBRARY_PATH="#{homebrew_prefix}/opt/libangle/lib:$DYLD_FALLBACK_LIBRARY_PATH" \\
+      qemu-system-aarch64 "$@"
+      EOF
+      chmod +x run-qemu.sh
+      
+      For Intel Macs:
+      
+      cat > run-qemu-x86.sh <<EOF
+      #!/bin/bash
+      exec sudo DYLD_FALLBACK_LIBRARY_PATH="#{homebrew_prefix}/opt/libangle/lib:$DYLD_FALLBACK_LIBRARY_PATH" \\
+      qemu-system-x86_64 "$@"
+      EOF
+      chmod +x run-qemu-x86.sh
+      
+      If you encounter missing library errors when running QEMU with 3D acceleration,
+      first check that you created the helper script correctly. If problems persist,
+      try using virtio-gpu-pci instead of virtio-gpu-gl-pci and remove gl=es from display options.
+      
+      For full documentation and usage examples, see:
+      https://github.com/startergo/homebrew-qemu-virgl
+    EOS
+  end
+
+  def install
+    lib.install Dir["lib/*.dylib"]
+    include.install Dir["include/*"]
+    doc.install Dir["AUTHORS", "LICENSE", "README.md"] if File.exist?("README.md")
+    
+    # Create any needed symlinks for supporting libraries
+    system "ln", "-sf", "#{lib}/libEGL.dylib", "#{lib}/libEGL.1.dylib" if File.exist?("#{lib}/libEGL.dylib")
   end
 
   test do
-    system "true"
+    # Test for dynamic library loading
+    (testpath/"test.c").write <<~EOS
+      #include <EGL/egl.h>
+      #include <GLES2/gl2.h>
+      #include <stdio.h>
+      
+      int main() {
+        printf("ANGLE test\\n");
+        EGLint major, minor;
+        EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        if (display == EGL_NO_DISPLAY) {
+          // This is expected as we're just testing for linkage
+          return 0;
+        }
+        return eglInitialize(display, &major, &minor) ? 0 : 1;
+      }
+    EOS
+    
+    system ENV.cc, "test.c",
+           "-I#{include}",
+           "-L#{lib}",
+           "-lEGL",
+           "-lGLESv2",
+           "-o", "test"
+    
+    system "./test" rescue true
   end
 end

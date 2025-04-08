@@ -1,12 +1,10 @@
 # Formula created by startergo on 2025-03-12 13:25:22 UTC
 class Virglrenderer < Formula
   desc "VirGL virtual OpenGL renderer"
-  homepage "https://github.com/akihikodaki/virglrenderer"
+  
   head do
     url "https://github.com/akihikodaki/virglrenderer.git", branch: "macos"
-    version "HEAD"
   end
-  license "MIT"
 
   depends_on "meson" => :build
   depends_on "ninja" => :build
@@ -15,6 +13,7 @@ class Virglrenderer < Formula
   depends_on "python@3.13" => :build
   depends_on "startergo/homebrew-qemu-virgl/libangle"
   depends_on "startergo/homebrew-qemu-virgl/libepoxy-angle"
+  depends_on "spice-protocol"
 
   def install
     epoxy_formula = Formula["startergo/homebrew-qemu-virgl/libepoxy-angle"]
