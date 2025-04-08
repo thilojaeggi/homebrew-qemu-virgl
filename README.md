@@ -19,29 +19,31 @@ Features:
 ### Prerequisites
 
 1. **Xcode**:
-   ```sh
-   # Install Xcode from the Mac App Store
-   # After installation, open Xcode to accept the license agreement
-   sudo xcodebuild -license accept
-   ```
-   Note: The Command Line Tools alone are not sufficient; full Xcode is required for building QEMU and its dependencies.
+   
+# Install Xcode from the Mac App Store
+# After installation, open Xcode to accept the license agreement
+
+```sh  
+sudo xcodebuild -license accept
+```
+Note: The Command Line Tools alone are not sufficient; full Xcode is required for building QEMU and its dependencies.
 
 2. **Homebrew**:
-   If you haven't installed Homebrew yet:
-   ```sh
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
+If you haven't installed Homebrew yet:
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
 ### Installation Steps
 
 1. Add the tap and install QEMU with GPU acceleration:
-   ```sh
-   brew tap startergo/qemu-virgl
-   brew install --HEAD startergo/qemu-virgl/libangle
-   brew install --HEAD startergo/qemu-virgl/libepoxy-angle
-   brew install --HEAD startergo/qemu-virgl/virglrenderer
-   brew install startergo/qemu-virgl/qemu-virgl
-   ```
+```sh
+brew tap startergo/qemu-virgl
+brew install --HEAD startergo/qemu-virgl/libangle
+brew install --HEAD startergo/qemu-virgl/libepoxy-angle
+brew install --HEAD startergo/qemu-virgl/virglrenderer
+brew install startergo/qemu-virgl/qemu-virgl
+```
 
    > ⚠️ **Important**: Do NOT run just `brew install startergo/qemu-virgl/qemu-virgl`. 
    > The individual installation steps with `--HEAD` flags are required to get the latest 
@@ -57,10 +59,32 @@ Note: The first installation might take some time (15-30 minutes) as it builds s
 ### Verifying Installation
 
 To verify the installation was successful:
+
+# Verify QEMU installation
 ```sh
-qemu-system-x86_64 --version  # Should show QEMU version
-virgl_test_server_android    # Should be available if virglrenderer installed correctly
+qemu-system-aarch64 --version  # Should show QEMU version
 ```
+
+# Verify virglrenderer installation:
+```sh   
+which virgl_test_server       
+```
+Should show /opt/homebrew/bin/virgl_test_server
+
+
+# Verify OpenGL acceleration is working
+```
+./run-qemu.sh \
+  -machine virt,accel=hvf \
+  -cpu cortex-a72 -smp 2 -m 1G \
+  -device virtio-gpu-gl-pci \
+  -display cocoa,gl=es \
+  -nodefaults \
+  -device VGA,vgamem_mb=64 \
+  -monitor stdio
+```
+When the QEMU monitor appears (shown by the (qemu) prompt), type `info qtree`. The `qtree` output clearly shows that `virtio-gpu-gl-pci` and `virtio-gpu-gl-device` are properly configured in the VM, confirming that your OpenGL acceleration is working correctly through the ANGLE/Metal path. Type quit to exit QEMU.
+
 ### Usage
 Qemu has many command line options and emulated devices, with specific configurations based on your CPU type (Intel/Apple Silicon).
 
