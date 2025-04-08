@@ -142,6 +142,9 @@ Install the system from the ISO image:
   -drive "if=pflash,format=raw,file=./edk2-aarch64-code.fd,readonly=on" \
   -drive "if=pflash,format=raw,file=./edk2-arm-vars.fd,discard=on" \
   -drive "if=virtio,format=raw,file=./hdd.raw,discard=on" \
+  -chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on \
+  -device virtio-serial-pci \
+  -device virtserialport,chardev=spice,name=com.redhat.spice.0 \
   -cdrom Fedora-Silverblue-ostree-aarch64-41-1.4.iso \
   -boot d 
 ```
@@ -161,6 +164,9 @@ This command will start a QEMU virtual machine with the following options:
 - `-drive "if=pflash,format=raw,file=./edk2-aarch64-code.fd,readonly=on"`: Use the QEMU EFI firmware as a read-only drive.
 - `-drive "if=pflash,format=raw,file=./edk2-arm-vars.fd,discard=on"`: Use the QEMU EFI variables as a discardable drive.
 - `-drive "if=virtio,format=raw,file=./hdd.raw,discard=on"`: Use the created disk image as a discardable virtual hard drive.
+- `-chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on`: Creates a SPICE agent character device with clipboard sharing enabled
+- `device virtio-serial-pci`: Adds a virtio-serial PCI controller for communication
+- `-device virtserialport,chardev=spice,name=com.redhat.spice.0`: Connects the SPICE agent to the virtio-serial bus. Note: Inside your Linux guest, you'll need to install the SPICE guest agent if not installed by default.
 - `-cdrom Fedora-Silverblue-ostree-aarch64-41-1.4.iso`: Use the Fedora ARM ISO as a CD-ROM.
 - `-boot d`: Boot from the CD-ROM.
 
@@ -179,7 +185,10 @@ Run the system without the CD image to boot into the primary partition:
   -netdev vmnet-shared,id=net \
   -drive "if=pflash,format=raw,file=./edk2-aarch64-code.fd,readonly=on" \
   -drive "if=pflash,format=raw,file=./edk2-arm-vars.fd,discard=on" \
-  -drive "if=virtio,format=raw,file=./hdd.raw,discard=on"
+  -drive "if=virtio,format=raw,file=./hdd.raw,discard=on" \
+  -chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on \
+  -device virtio-serial-pci \
+  -device virtserialport,chardev=spice,name=com.redhat.spice.0
 ```
 This command is similar to the previous one but without the `-cdrom` and `-boot d` options, allowing you to boot directly from the installed system on the disk image.
 
@@ -226,7 +235,10 @@ Install the system from the ISO image:
   -display cocoa,gl=es \
   -usb -device usb-tablet \
   -cdrom Fedora-Workstation-Live-x86_64-40-1.2.iso \
-  -boot d
+  -boot d \
+  -chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on \
+  -device virtio-serial-pci \
+  -device virtserialport,chardev=spice,name=com.redhat.spice.0
 ```
 This command will start a QEMU virtual machine with the following options:
 - `-M q35`: Use the Q35 machine type.
@@ -240,6 +252,9 @@ This command will start a QEMU virtual machine with the following options:
 - `-vga virtio-gpu-gl-pci`: Use the VirtIO GPU with OpenGL acceleration.
 - `-display cocoa,gl=es`: Use the Cocoa display backend for macOS with OpenGL ES.
 - `-usb -device usb-tablet`: Use a USB tablet device for better mouse handling.
+- `-chardev qemu-vdagent,id=spice,name=vdagent,clipboard=on`: Enable clipboard sharing with the host.
+- `-device virtio-serial-pci`: Use the VirtIO serial device.
+- `-device virtserialport,chardev=spice,name=com.redhat.spice.0`: Use the VirtIO serial port for SPICE.
 
 ### Troubleshooting
 
