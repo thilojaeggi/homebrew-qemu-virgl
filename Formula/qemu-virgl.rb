@@ -86,9 +86,6 @@ class QemuVirgl < Formula
       --cc=#{ENV.cc}
       --host-cc=#{ENV.cc}
       
-      # Skip git operations
-      --disable-git-update
-      
       # Disable unnecessary features
       --disable-bsd-user
       --disable-guest-agent
