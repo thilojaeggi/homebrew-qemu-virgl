@@ -22,23 +22,19 @@ class Virglrenderer < Formula
   def install
     # Use absolute paths to be absolutely certain
     epoxy = Formula["startergo/qemu-virgl/libepoxy-angle"]
-    epoxy_pc_path = "#{epoxy.prefix}/lib/pkgconfig"
-    
-    # Use both absolute path and opt_lib path for redundancy
-    ENV.prepend_path "PKG_CONFIG_PATH", epoxy_pc_path
-    ENV.prepend_path "PKG_CONFIG_PATH", "#{epoxy.opt_lib}/pkgconfig"
-    
-    # Make sure libangle is properly found
     angle = Formula["startergo/qemu-virgl/libangle"]
+    
+    # Set up environment variables for the build
+    ENV.prepend_path "PKG_CONFIG_PATH", "#{epoxy.opt_lib}/pkgconfig"
     ENV.append "LDFLAGS", "-L#{angle.opt_lib}"
     ENV.append "CPPFLAGS", "-I#{angle.opt_include}"
     
-    # Pass pkg-config path explicitly to meson
+    # Use the correct platforms option format
     system "meson", "setup", "build",
            "--prefix=#{prefix}",
            "--buildtype=release",
-           "-Degl=enabled",
-           "--pkg-config-path=#{epoxy_pc_path}"
+           "-Dplatforms=egl",
+           "--pkg-config-path=#{epoxy.opt_lib}/pkgconfig"
     
     system "meson", "compile", "-C", "build"
     system "meson", "install", "-C", "build"
