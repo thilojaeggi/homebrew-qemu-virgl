@@ -80,9 +80,6 @@ class QemuVirgl < Formula
     virgl_prefix = Formula["startergo/qemu-virgl/virglrenderer"].opt_prefix
     spice_prefix = Formula["spice-protocol"].opt_prefix    
 
-    # Tell configure to skip git operations
-    ENV["QEMU_CONFIGURE_OPTS"] = "--disable-git-update"
-
     # Build configuration
     args = %W[
       --prefix=#{prefix}
