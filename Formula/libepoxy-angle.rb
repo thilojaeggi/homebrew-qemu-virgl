@@ -1,7 +1,9 @@
 class LibepoxyAngle < Formula
   desc "Library for handling OpenGL function pointer management"
   homepage "https://github.com/anholt/libepoxy"
-  head "https://github.com/anholt/libepoxy.git", using: :git
+  url "https://github.com/anholt/libepoxy.git", 
+      revision: "e98617e62e74a835d4e403cd270afaf296afe839",
+      using: :git
   version "2025.03.08.1"
   license "MIT"
 
@@ -9,7 +11,7 @@ class LibepoxyAngle < Formula
   depends_on "ninja" => :build
   depends_on "pkg-config" => :build
   depends_on "python@3.13" => :build
-  depends_on "startergo/homebrew-qemu-virgl/libangle"
+  depends_on "startergo/qemu-virgl/libangle"
 
   # Waiting for upstreaming of https://github.com/akihikodaki/libepoxy/tree/macos
   patch :p1 do
@@ -20,8 +22,8 @@ class LibepoxyAngle < Formula
   def install
     mkdir "build" do
       system "meson", *std_meson_args,
-             "-Dc_args=-I#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/include",
-             "-Dc_link_args=-L#{Formula["startergo/homebrew-qemu-virgl/libangle"].opt_prefix}/lib",
+             "-Dc_args=-I#{Formula["startergo/qemu-virgl/libangle"].opt_prefix}/include",
+             "-Dc_link_args=-L#{Formula["startergo/qemu-virgl/libangle"].opt_prefix}/lib",
              "-Degl=yes", "-Dx11=false",
              ".."
       system "ninja", "-v"
