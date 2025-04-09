@@ -59,19 +59,19 @@ Note: The first installation might take some time (15-30 minutes) as it builds s
 
 To verify the installation was successful:
 
-# Verify QEMU installation
+#### Verify QEMU installation
 ```sh
 qemu-system-aarch64 --version  # Should show QEMU version
 ```
 
-# Verify virglrenderer installation:
+#### Verify virglrenderer installation:
 ```sh   
 which virgl_test_server       
 ```
 Should show /opt/homebrew/bin/virgl_test_server
 
 
-# Verify OpenGL acceleration is working
+#### Verify OpenGL acceleration is working
 ```
 ./run-qemu.sh \
   -machine virt,accel=hvf \
