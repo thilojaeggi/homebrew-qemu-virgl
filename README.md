@@ -20,8 +20,8 @@ Features:
 
 1. **Xcode**:
    
-# Install Xcode from the Mac App Store
-# After installation, open Xcode to accept the license agreement
+#### Install Xcode from the Mac App Store
+#### After installation, open Xcode to accept the license agreement
 
 ```sh  
 sudo xcodebuild -license accept
