@@ -135,9 +135,6 @@ class QemuVirgl < Formula
       exec "#{bin}/qemu-system-x86_64" "$@"
     EOS
     chmod 0755, bin/"qemu-virgl"
-    
-    # Make sure the script is properly linked to the PATH
-    bin.install_symlink bin/"qemu-virgl"
   end
 
   def caveats
