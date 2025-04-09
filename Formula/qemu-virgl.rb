@@ -9,6 +9,13 @@ class QemuVirgl < Formula
   version "2025.03.14"
   license "GPL-2.0-only"
 
+  # Add these lines to disable submodule checkout
+  def post_fetch
+    system "git", "-C", buildpath, "config", "--local", "submodule.recurse", "false"
+    # Only initialize necessary submodules explicitly if needed
+    system "git", "-C", buildpath, "submodule", "update", "--init", "dtc" if Dir.exist?("#{buildpath}/.git/modules")
+  end
+
   depends_on "libtool" => :build
   depends_on "meson" => :build
   depends_on "ninja" => :build
