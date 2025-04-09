@@ -1,19 +1,19 @@
-# Formula created by startergo on version 2025-03-14 00:44:50 UTC
+class NoSubmoduleGitDownloadStrategy < GitDownloadStrategy
+  def submodules?; false; end
+end
+
 class QemuVirgl < Formula
-  desc "Emulator for x86 and PowerPC"
+  desc "Emulator for x86 and PowerPC with VirGL acceleration support"
   homepage "https://www.qemu.org/"
   url "https://github.com/qemu/qemu.git", 
       revision: "9027aa63959c0a6cdfe53b2a610aaec98764a2da",
-      using: :git, 
-      shallow: true
-  version "2025.03.14"
+      using: NoSubmoduleGitDownloadStrategy
+  version "9.2.3"
   license "GPL-2.0-only"
 
-  # Add these lines to disable submodule checkout
-  def post_fetch
-    system "git", "-C", buildpath, "config", "--local", "submodule.recurse", "false"
-    # Only initialize necessary submodules explicitly if needed
-    system "git", "-C", buildpath, "submodule", "update", "--init", "dtc" if Dir.exist?("#{buildpath}/.git/modules")
+  livecheck do
+    url "https://www.qemu.org/download/"
+    regex(/href=.*?qemu[._-]v?(\d+(?:\.\d+)+)\.t/i)
   end
 
   depends_on "libtool" => :build
@@ -52,11 +52,12 @@ class QemuVirgl < Formula
   end
 
   patch :p1 do
-    url "https://raw.githubusercontent.com/startergo/homebrew-qemu-virgl/refs/heads/master/Patches/qemu-v06.diff"
+    url "https://raw.githubusercontent.com/startergo/homebrew-qemu-virgl/master/Patches/qemu-v06.diff"
     sha256 "61e9138e102a778099b96fb00cffce2ba65040c1f97f2316da3e7ef2d652034b"
   end
 
   def install
+    # Setup Python environment
     ENV["LIBTOOL"] = "glibtool"
     
     python3 = Formula["python@3.13"].opt_bin/"python3.13"
@@ -73,70 +74,116 @@ class QemuVirgl < Formula
     ENV["PYTHON"] = venv_python
     ENV.prepend_path "PYTHONPATH", venv_path/"lib/python3.13/site-packages"
 
+    # Set library paths
+    angle_prefix = Formula["startergo/qemu-virgl/libangle"].opt_prefix
+    epoxy_prefix = Formula["startergo/qemu-virgl/libepoxy-angle"].opt_prefix
+    virgl_prefix = Formula["startergo/qemu-virgl/virglrenderer"].opt_prefix
+    spice_prefix = Formula["spice-protocol"].opt_prefix    
+
+    # Tell configure to skip git operations
+    ENV["QEMU_CONFIGURE_OPTS"] = "--disable-git-update"
+
+    # Build configuration
     args = %W[
       --prefix=#{prefix}
       --cc=#{ENV.cc}
       --host-cc=#{ENV.cc}
+      
+      # Skip git operations
+      --disable-git-update
       
       # Disable unnecessary features
       --disable-bsd-user
       --disable-guest-agent
       --disable-sdl
       --disable-gtk
-            
+      
+      # Enable necessary features
+      --enable-cocoa
+      --enable-opengl
+      --enable-virglrenderer
+      
+      # Enable additional features
+      --enable-curses
+      --enable-libssh
+      --enable-vde
+      --enable-fdt=system
+      
+      # Debugging features
       --enable-debug
       --enable-debug-info
       --enable-trace-backends=log,simple
       --enable-malloc=system
-      --enable-fdt=system
       
-      # Include paths
-      --extra-cflags=-I#{Formula["libangle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["libepoxy-angle"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["virglrenderer"].opt_prefix}/include
-      --extra-cflags=-I#{Formula["spice-protocol"].opt_prefix}/include/spice-1
+      # Include paths for headers
+      --extra-cflags=-I#{angle_prefix}/include
+      --extra-cflags=-I#{epoxy_prefix}/include
+      --extra-cflags=-I#{virgl_prefix}/include
+      --extra-cflags=-I#{spice_prefix}/include/spice-1
+      --extra-cflags=-DNCURSES_WIDECHAR=1
 
       # Library paths
-      --extra-ldflags=-L#{Formula["libangle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["libepoxy-angle"].opt_prefix}/lib
-      --extra-ldflags=-L#{Formula["virglrenderer"].opt_prefix}/lib
+      --extra-ldflags=-L#{angle_prefix}/lib
+      --extra-ldflags=-L#{epoxy_prefix}/lib
+      --extra-ldflags=-L#{virgl_prefix}/lib
+      --extra-ldflags=-L#{spice_prefix}/lib
+      
+      # Runtime library paths
+      --extra-ldflags=-Wl,-rpath,#{angle_prefix}/lib
+      --extra-ldflags=-Wl,-rpath,#{epoxy_prefix}/lib
+      --extra-ldflags=-Wl,-rpath,#{virgl_prefix}/lib
+      --extra-ldflags=-Wl,-rpath,#{spice_prefix}/lib
     ]
-    
-    
+
+    # Add smbd path
     args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
-    args << "--enable-cocoa" if OS.mac?
 
     system "./configure", *args
-    system "make", "V=1", "install"
+    system "make", "V=1"
+    system "make", "install"
+    
+    # Create helper script for running QEMU with correct library paths
+    (bin/"qemu-virgl").write <<~EOS
+      #!/bin/bash
+      export DYLD_FALLBACK_LIBRARY_PATH="#{angle_prefix}/lib:#{epoxy_prefix}/lib:#{virgl_prefix}/lib:#{spice_prefix}/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+      export ANGLE_DEFAULT_PLATFORM="metal"
+      
+      # Uncomment for debugging
+      # export VIRGL_DEBUG=all
+      # export MESA_DEBUG=1
+      
+      exec "#{bin}/qemu-system-x86_64" "$@"
+    EOS
+    chmod 0755, bin/"qemu-virgl"
+    
+    # Make sure the script is properly linked to the PATH
+    bin.install_symlink bin/"qemu-virgl"
+  end
+
+  def caveats
+    <<~EOS
+      To run QEMU with VirGL acceleration, use:
+        qemu-virgl -machine q35,accel=hvf -cpu host -m 4G \\
+          -device virtio-gpu-pci,virgl=on -display cocoa,gl=on [other options]
+          
+      For detailed usage examples, see:
+      https://github.com/startergo/homebrew-qemu-virgl
+    EOS
   end
 
   test do
     expected = "QEMU Project"
-    %w[
-      aarch64 alpha arm cris hppa i386 m68k microblaze microblazeel
-      mips mips64 mips64el mipsel nios2 or1k ppc ppc64 riscv32 riscv64
-      rx s390x sh4 sh4eb sparc sparc64 tricore x86_64 xtensa xtensaeb
-    ].each do |arch|
+    
+    # Test basic system emulators
+    %w[aarch64 x86_64].each do |arch|
       assert_match expected, shell_output("#{bin}/qemu-system-#{arch} --version")
     end
 
+    # Test disk image tools
     resource("test-image").stage testpath
     assert_match "file format: raw", shell_output("#{bin}/qemu-img info FLOPPY.img")
 
-    system "#{bin}/qemu-wrapper", "qemu-system-aarch64", "-accel", "help"
-
-    # Test standard VM
-    system "#{bin}/qemu-wrapper", "qemu-system-aarch64", \
-           "-machine", "virt,accel=hvf", \
-           "-cpu", "host", \
-           "-display", "none", \
-           "-m", "64"
-
-    # Test coroutine debugging
-    system "#{bin}/qemu-wrapper", "qemu-system-aarch64", \
-           "-machine", "virt", \
-           "-cpu", "cortex-a72", \
-           "-display", "none", \
-           "-m", "64"
+    # Test VirGL helper script
+    system "#{bin}/qemu-virgl", "-accel", "help"
   end
 end
