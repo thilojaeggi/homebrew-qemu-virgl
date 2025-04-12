@@ -70,20 +70,6 @@ which virgl_test_server
 ```
 Should show /opt/homebrew/bin/virgl_test_server
 
-
-#### Verify OpenGL acceleration is working
-```
-./run-qemu.sh \
-  -machine virt,accel=hvf \
-  -cpu cortex-a72 -smp 2 -m 1G \
-  -device virtio-gpu-gl-pci \
-  -display cocoa,gl=es \
-  -nodefaults \
-  -device VGA,vgamem_mb=64 \
-  -monitor stdio
-```
-When the QEMU monitor appears (shown by the (qemu) prompt), type `info qtree`. The `qtree` output clearly shows that `virtio-gpu-gl-pci` and `virtio-gpu-gl-device` are properly configured in the VM, confirming that your OpenGL acceleration is working correctly through the ANGLE/Metal path. Type quit to exit QEMU.
-
 ### Usage
 Qemu has many command line options and emulated devices, with specific configurations based on your CPU type (Intel/Apple Silicon).
 
@@ -123,6 +109,19 @@ qemu-system-aarch64 "\$@"
 EOF
 chmod +x run-qemu.sh
 ```
+
+#### Verify that OpenGL acceleration is working
+```
+./run-qemu.sh \
+  -machine virt,accel=hvf \
+  -cpu cortex-a72 -smp 2 -m 1G \
+  -device virtio-gpu-gl-pci \
+  -display cocoa,gl=es \
+  -nodefaults \
+  -device VGA,vgamem_mb=64 \
+  -monitor stdio
+```
+When the QEMU monitor appears (shown by the (qemu) prompt), type `info qtree`. The `qtree` output clearly shows that `virtio-gpu-gl-pci` and `virtio-gpu-gl-device` are properly configured in the VM, confirming that your OpenGL acceleration is working correctly through the ANGLE/Metal path. Type quit to exit QEMU.
 
 Install the system from the ISO image:
 
