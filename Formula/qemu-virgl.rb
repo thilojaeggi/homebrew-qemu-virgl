@@ -21,6 +21,8 @@ class QemuVirgl < Formula
   depends_on "ninja" => :build
   depends_on "pkg-config" => :build
   depends_on "python@3.13" => :build
+  depends_on "spice-protocol" => :build
+  depends_on "spice-server" => :build
 
   depends_on "coreutils"
   depends_on "dtc"
@@ -90,6 +92,7 @@ class QemuVirgl < Formula
       --disable-sdl
       --disable-gtk
       --enable-cocoa
+      --enable-spice
       --enable-opengl
       --enable-virglrenderer
       --enable-curses
