@@ -37,6 +37,7 @@ class QemuVirgl < Formula
   depends_on "libssh"
   depends_on "libusb"
   depends_on "lzo"
+  depends_on "mesa"
   depends_on "ncurses"
   depends_on "nettle"
   depends_on "pixman"
@@ -99,6 +100,7 @@ class QemuVirgl < Formula
       --enable-spice-gl
       --enable-slirp
       --enable-gtk
+      --enable-gbm
       --disable-sdl
       --enable-opengl
       --enable-virglrenderer
