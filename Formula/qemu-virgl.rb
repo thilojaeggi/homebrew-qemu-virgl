@@ -58,8 +58,8 @@ class QemuVirgl < Formula
   end
 
   patch :p1 do
-    url "https://raw.githubusercontent.com/startergo/homebrew-qemu-virgl/master/Patches/qemu-v06.diff"
-    sha256 "61e9138e102a778099b96fb00cffce2ba65040c1f97f2316da3e7ef2d652034b"
+    url "https://raw.githubusercontent.com/thilojaeggi/homebrew-qemu-virgl/master/Patches/qemu-v06.diff"
+    sha256 "c8759bbce889a781947cbe21e92f229e3d5a26eee2fa23c77396e7c2d26e5a4b"
   end
 
   def install

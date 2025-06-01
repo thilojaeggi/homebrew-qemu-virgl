@@ -968,7 +968,7 @@ index e1a9b36185..ff0378f655 100644
  #include "ui/console.h"
  
 -#if defined(CONFIG_OPENGL) && defined(CONFIG_GBM)
-+#if defined(CONFIG_OPENGL) && defined(CONFIG_EGL) && defined(CONFIG_GBM)
++#if defined(CONFIG_OPENGL)
  #  define HAVE_SPICE_GL 1
  #  include "ui/egl-helpers.h"
  #  include "ui/egl-context.h"
