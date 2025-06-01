@@ -94,6 +94,7 @@ class QemuVirgl < Formula
       --disable-gtk
       --enable-cocoa
       --enable-spice
+      --enable-slirp
       --enable-opengl
       --enable-virglrenderer
       --enable-curses
