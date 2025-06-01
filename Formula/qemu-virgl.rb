@@ -5,8 +5,8 @@ end
 class QemuVirgl < Formula
   desc "Emulator for x86 and PowerPC with VirGL acceleration support"
   homepage "https://www.qemu.org/"
-  url "https://github.com/thilojaeggi/qemu.git", 
-      revision: "0a38940219c4915237c2c934faebdda19185a919",
+  url "https://github.com/qemu/qemu.git", 
+      revision: "9027aa63959c0a6cdfe53b2a610aaec98764a2da",
       using: NoSubmoduleGitDownloadStrategy
   version "9.2.3"
   license "GPL-2.0-only"
