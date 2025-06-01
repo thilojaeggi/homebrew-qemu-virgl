@@ -41,6 +41,8 @@ class QemuVirgl < Formula
   depends_on "pixman"
   depends_on "snappy"
   depends_on "usbredir"
+  depends_on "gtk+3"
+
 
   depends_on "spice-protocol"
   depends_on "vde"
@@ -94,6 +96,7 @@ class QemuVirgl < Formula
       --enable-spice
       --enable-slirp
       --enable-gtk
+      --disable-sdl
       --enable-opengl
       --enable-virglrenderer
       --enable-curses
