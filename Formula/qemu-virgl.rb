@@ -127,10 +127,6 @@ class QemuVirgl < Formula
     args << "--smbd=#{HOMEBREW_PREFIX}/sbin/samba-dot-org-smbd"
 
     system "./configure", *args
-    inreplace "config-host.mak" do |s|
-      s.gsub!(/^#?CONFIG_ANGLE.*/, "CONFIG_ANGLE=y")
-      s.gsub!(/^#?HAVE_SPICE_GL.*/, "HAVE_SPICE_GL=y")
-    end    
     system "make", "V=1"
     system "make", "install"
     

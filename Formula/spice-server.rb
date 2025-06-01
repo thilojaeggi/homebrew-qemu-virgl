@@ -29,6 +29,10 @@ class SpiceServer < Formula
     depends_on "zstd"
   
     depends_on "opus"
+    
+    # Add EGL support via ANGLE
+    depends_on "startergo/qemu-virgl/libangle"
+    depends_on "startergo/qemu-virgl/libepoxy-angle"
   
     uses_from_macos "bison" => :build
     uses_from_macos "flex" => :build
@@ -53,13 +57,37 @@ class SpiceServer < Formula
   
     def install
       ENV["LIBTOOL"] = "glibtool"
+      
+      # Set up paths for EGL/OpenGL libraries
+      libangle = Formula["startergo/qemu-virgl/libangle"]
+      libepoxy_angle = Formula["startergo/qemu-virgl/libepoxy-angle"]
   
       args = %W[
         --prefix=#{prefix}
+        --enable-opengl
+        --with-egl-platform=surfaceless
+        --with-coroutine=gthread
+        --enable-client
+        --enable-usbredir
+        --enable-lz4
+        --enable-threads
       ]
-  
+
+      # Add ANGLE library paths to ensure libEGL.dylib is found
+      ENV.append "CFLAGS", "-I#{libangle.opt_include}"
+      ENV.append "CFLAGS", "-I#{libepoxy_angle.opt_include}"
+      ENV.append "LDFLAGS", "-L#{libangle.opt_lib}"
+      ENV.append "LDFLAGS", "-L#{libepoxy_angle.opt_lib}"
+      
+      # Explicitly link to libEGL.dylib
+      ENV.append "LDFLAGS", "-lEGL"
+      
+      # Ensure pkgconfig can find epoxy with EGL support
+      ENV.prepend_path "PKG_CONFIG_PATH", "#{libepoxy_angle.opt_lib}/pkgconfig"
+
       system "./configure", *args
       system "make", "install"
     end
   
   end
+  
