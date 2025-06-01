@@ -32,6 +32,7 @@ class QemuVirgl < Formula
   depends_on "startergo/qemu-virgl/libangle"
   depends_on "startergo/qemu-virgl/libepoxy-angle"
   depends_on "startergo/qemu-virgl/virglrenderer"
+  depends_on "startergo/qemu-virgl/spice-server"
   depends_on "libpng"
   depends_on "libssh"
   depends_on "libusb"
@@ -85,6 +86,7 @@ class QemuVirgl < Formula
     epoxy_prefix = Formula["startergo/qemu-virgl/libepoxy-angle"].opt_prefix
     virgl_prefix = Formula["startergo/qemu-virgl/virglrenderer"].opt_prefix
     spice_prefix = Formula["spice-protocol"].opt_prefix    
+    spice_server_prefix = Formula["startergo/qemu-virgl/spice-server"].opt_prefix
 
     # Build configuration
     args = %W[
@@ -94,6 +96,7 @@ class QemuVirgl < Formula
       --disable-bsd-user
       --enable-cocoa
       --enable-spice
+      --enable-spice-gl
       --enable-slirp
       --enable-gtk
       --disable-sdl
@@ -112,15 +115,18 @@ class QemuVirgl < Formula
       --extra-cflags=-I#{epoxy_prefix}/include
       --extra-cflags=-I#{virgl_prefix}/include
       --extra-cflags=-I#{spice_prefix}/include/spice-1
+      --extra-cflags=-I#{spice_server_prefix}/include
       --extra-cflags=-DNCURSES_WIDECHAR=1
       --extra-ldflags=-L#{angle_prefix}/lib
       --extra-ldflags=-L#{epoxy_prefix}/lib
       --extra-ldflags=-L#{virgl_prefix}/lib
       --extra-ldflags=-L#{spice_prefix}/lib
+      --extra-ldflags=-L#{spice_server_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{angle_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{epoxy_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{virgl_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{spice_prefix}/lib
+      --extra-ldflags=-Wl,-rpath,#{spice_server_prefix}/lib
     ]
 
     # Add smbd path
@@ -133,7 +139,7 @@ class QemuVirgl < Formula
     # Create helper script for running QEMU with correct library paths
     (bin/"qemu-virgl").write <<~EOS
       #!/bin/bash
-      export DYLD_FALLBACK_LIBRARY_PATH="#{angle_prefix}/lib:#{epoxy_prefix}/lib:#{virgl_prefix}/lib:#{spice_prefix}/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+      export DYLD_FALLBACK_LIBRARY_PATH="#{angle_prefix}/lib:#{epoxy_prefix}/lib:#{virgl_prefix}/lib:#{spice_prefix}/lib:#{spice_server_prefix}/lib:$DYLD_FALLBACK_LIBRARY_PATH"
       export ANGLE_DEFAULT_PLATFORM="metal"
       
       # Uncomment for debugging
