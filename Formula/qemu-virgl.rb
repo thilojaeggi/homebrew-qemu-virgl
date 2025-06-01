@@ -40,6 +40,7 @@ class QemuVirgl < Formula
   depends_on "nettle"
   depends_on "pixman"
   depends_on "snappy"
+  depends_on "usbredir"
   depends_on "spice-protocol"
   depends_on "vde"
 
@@ -100,6 +101,7 @@ class QemuVirgl < Formula
       --enable-vde
       --enable-fdt=system
       --enable-debug
+      --enable-usb-redir
       --enable-debug-info
       --enable-trace-backends=log,simple
       --enable-malloc=system
