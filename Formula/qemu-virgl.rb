@@ -41,6 +41,7 @@ class QemuVirgl < Formula
   depends_on "pixman"
   depends_on "snappy"
   depends_on "usbredir"
+
   depends_on "spice-protocol"
   depends_on "vde"
 
@@ -89,9 +90,6 @@ class QemuVirgl < Formula
       --cc=#{ENV.cc}
       --host-cc=#{ENV.cc}
       --disable-bsd-user
-      --disable-guest-agent
-      --disable-sdl
-      --disable-gtk
       --enable-cocoa
       --enable-spice
       --enable-slirp
