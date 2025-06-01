@@ -39,6 +39,7 @@ class QemuVirgl < Formula
   depends_on "ncurses"
   depends_on "nettle"
   depends_on "pixman"
+  depends_on "mesa"
   depends_on "snappy"
   depends_on "usbredir"
   depends_on "gtk+3"
@@ -96,6 +97,7 @@ class QemuVirgl < Formula
       --enable-spice
       --enable-slirp
       --enable-gtk
+      --enable-gbm
       --disable-sdl
       --enable-opengl
       --enable-virglrenderer
