@@ -13,10 +13,6 @@ class QemuVirgl < Formula
   version "10.1.2"
   license "GPL-2.0-only"
 
-  bottle do
-    root_url "https://github.com/startergo/homebrew-qemu-virgl/releases/download/v20251125.201155"
-    sha256 arm64_sequoia: "1dd6b04f7b195c829c1f108cd2a21cbd0f25ad8a2cd3e1d35368c169bcdecc1a"
-  end
 
   livecheck do
     url "https://www.qemu.org/download/"
@@ -28,7 +24,7 @@ class QemuVirgl < Formula
   depends_on "ninja" => :build
   depends_on "pkg-config" => :build
   depends_on "python@3.13" => :build
-
+  
   depends_on "coreutils"
   depends_on "dtc"
   depends_on "glib"
@@ -46,6 +42,7 @@ class QemuVirgl < Formula
   depends_on "pixman"
   depends_on "snappy"
   depends_on "spice-protocol"
+  depends_on "spice-server"
   depends_on "vde"
 
   resource "tomli" do
@@ -99,6 +96,7 @@ class QemuVirgl < Formula
       --enable-cocoa
       --enable-opengl
       --enable-virglrenderer
+      --enable-spice
       --enable-curses
       --enable-libssh
       --enable-vde
