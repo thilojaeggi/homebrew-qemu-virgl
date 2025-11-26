@@ -79,10 +79,14 @@ class QemuVirgl < Formula
     ENV.prepend_path "PYTHONPATH", venv_path/"lib/python3.13/site-packages"
 
     # Set library paths
-    angle_prefix = Formula["startergo/qemu-virgl/libangle"].opt_prefix
-    epoxy_prefix = Formula["startergo/qemu-virgl/libepoxy-angle"].opt_prefix
-    virgl_prefix = Formula["startergo/qemu-virgl/virglrenderer"].opt_prefix
-    spice_prefix = Formula["spice-protocol"].opt_prefix    
+    angle_prefix        = Formula["startergo/qemu-virgl/libangle"].opt_prefix
+    epoxy_prefix        = Formula["startergo/qemu-virgl/libepoxy-angle"].opt_prefix
+    virgl_prefix        = Formula["startergo/qemu-virgl/virglrenderer"].opt_prefix
+    spice_proto_prefix  = Formula["spice-protocol"].opt_prefix
+    spice_server_prefix = Formula["spice-server"].opt_prefix
+
+    # Make sure pkg-config sees spice-server
+    ENV.prepend_path "PKG_CONFIG_PATH", "#{spice_server_prefix}/lib/pkgconfig" 
 
     # Build configuration
     args = %W[
@@ -108,16 +112,16 @@ class QemuVirgl < Formula
       --extra-cflags=-I#{angle_prefix}/include
       --extra-cflags=-I#{epoxy_prefix}/include
       --extra-cflags=-I#{virgl_prefix}/include
-      --extra-cflags=-I#{spice_prefix}/include/spice-1
+      --extra-cflags=-I#{spice_proto_prefix}/include/spice-1
       --extra-cflags=-DNCURSES_WIDECHAR=1
       --extra-ldflags=-L#{angle_prefix}/lib
       --extra-ldflags=-L#{epoxy_prefix}/lib
       --extra-ldflags=-L#{virgl_prefix}/lib
-      --extra-ldflags=-L#{spice_prefix}/lib
+      --extra-ldflags=-L#{spice_server_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{angle_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{epoxy_prefix}/lib
       --extra-ldflags=-Wl,-rpath,#{virgl_prefix}/lib
-      --extra-ldflags=-Wl,-rpath,#{spice_prefix}/lib
+      --extra-ldflags=-Wl,-rpath,#{spice_server_prefix}/lib
     ]
 
     # Add smbd path
@@ -142,7 +146,7 @@ class QemuVirgl < Formula
       system "install_name_tool", "-add_rpath", "#{angle_prefix}/lib", binary rescue nil
       system "install_name_tool", "-add_rpath", "#{epoxy_prefix}/lib", binary rescue nil
       system "install_name_tool", "-add_rpath", "#{virgl_prefix}/lib", binary rescue nil
-      system "install_name_tool", "-add_rpath", "#{spice_prefix}/lib", binary rescue nil
+      system "install_name_tool", "-add_rpath", "#{spice_server_prefix}/lib", binary rescue nil
       
       # Fix references to custom libraries
       ["libEGL.dylib", "libGLESv2.dylib"].each do |lib|
@@ -172,6 +176,7 @@ class QemuVirgl < Formula
       system "install_name_tool", "-add_rpath", "#{angle_prefix}/lib", lib rescue nil
       system "install_name_tool", "-add_rpath", "#{epoxy_prefix}/lib", lib rescue nil
       system "install_name_tool", "-add_rpath", "#{virgl_prefix}/lib", lib rescue nil
+      system "install_name_tool", "-add_rpath", "#{spice_server_prefix}/lib", lib rescue nil
     end
   end
 
